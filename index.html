@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
@@ -135,6 +136,23 @@
   .alert-negative { background: #FEF2F2; border-right: 3px solid #DC2626; padding: 10px 14px; border-radius: 6px; color: #991B1B; font-size: 13px; margin-top: 12px; }
   .scroll-cats { max-height: 480px; overflow-y: auto; padding-left: 4px; }
   .sync-badge { display: inline-block; background: #FCD34D; color: #78350F; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; margin-right: 8px; }
+  /* GitHub Sync */
+  .gh-bar { background: #0d1117; color: white; padding: 8px 24px; display: flex; gap: 10px; align-items: center; font-size: 12px; flex-wrap: wrap; }
+  .gh-bar .gh-status { color: #94a3b8; }
+  .gh-bar .gh-status.connected { color: #4ade80; }
+  .gh-bar .gh-status.warn { color: #fbbf24; }
+  .gh-bar button { background: rgba(255,255,255,.1); color: white; border: 1px solid rgba(255,255,255,.2); padding: 5px 12px; border-radius: 5px; cursor: pointer; font-family: inherit; font-size: 12px; }
+  .gh-bar button:hover:not(:disabled) { background: rgba(255,255,255,.2); }
+  .gh-bar button:disabled { opacity: .4; cursor: not-allowed; }
+  .gh-bar button.primary { background: #238636; border-color: #2ea043; }
+  .gh-bar button.primary:hover:not(:disabled) { background: #2ea043; }
+  .gh-bar .spacer { flex: 1; min-width: 20px; }
+  .gh-bar .last-sync { font-size: 11px; color: #94a3b8; }
+  .gh-modal .form-row { margin-bottom: 10px; display: flex; flex-direction: column; gap: 4px; }
+  .gh-modal .form-row label { font-size: 12px; color: #6b7280; font-weight: 500; }
+  .gh-modal .form-row input { padding: 7px 10px; border: 1px solid #d1d5db; border-radius: 5px; font-family: inherit; font-size: 13px; direction: ltr; text-align: left; }
+  .gh-modal .form-row .hint { font-size: 11px; color: #6b7280; }
+  .gh-modal .warning { background: #FEF3C7; border-right: 3px solid #F59E0B; padding: 8px 12px; border-radius: 4px; font-size: 12px; color: #78350F; margin-bottom: 12px; line-height: 1.5; }
 </style>
 </head>
 <body>
@@ -146,6 +164,52 @@
 <div class="tabs">
   <div class="tab active" data-tab="budget" onclick="switchTab('budget')">🧮 מחשבון תקציב</div>
   <div class="tab" data-tab="editor" onclick="switchTab('editor')">📝 עורך עסקאות</div>
+</div>
+
+<div class="gh-bar">
+  <span style="font-weight: 600;">🐙 GitHub Sync</span>
+  <span class="gh-status" id="ghStatus">לא מוגדר</span>
+  <span class="spacer"></span>
+  <span class="last-sync" id="ghLastSync"></span>
+  <button onclick="openGhSetup()">⚙ הגדרות</button>
+  <button onclick="ghLoad()" id="ghLoadBtn" disabled>📥 טען</button>
+  <button onclick="ghSave()" id="ghSaveBtn" class="primary" disabled>💾 שמור</button>
+</div>
+
+<div class="modal-overlay" id="ghModal" onclick="if(event.target===this)closeGhSetup()">
+  <div class="modal gh-modal">
+    <h2>🐙 הגדרת סנכרון GitHub</h2>
+    <div class="warning">
+      <b>אבטחה:</b> ה-Token יישמר ב-sessionStorage (יימחק כשתסגרי את הדפדפן). אל תשתפי את ה-URL עם הטוקן. השתמשי ב-Fine-grained PAT עם הרשאה רק על הריפו הזה.
+    </div>
+    <div class="form-row">
+      <label>שם משתמש (owner)</label>
+      <input id="ghOwner" placeholder="ainatte" />
+    </div>
+    <div class="form-row">
+      <label>שם הריפו</label>
+      <input id="ghRepo" placeholder="budget" />
+    </div>
+    <div class="form-row">
+      <label>נתיב הקובץ בריפו</label>
+      <input id="ghPath" placeholder="data.json" value="data.json" />
+      <span class="hint">למשל data.json — קובץ חדש ייוצר אוטומטית בשמירה הראשונה</span>
+    </div>
+    <div class="form-row">
+      <label>Branch</label>
+      <input id="ghBranch" placeholder="main" value="main" />
+    </div>
+    <div class="form-row">
+      <label>Personal Access Token</label>
+      <input id="ghToken" type="password" placeholder="github_pat_..." />
+      <span class="hint">צרי ב-Settings → Developer settings → Fine-grained tokens, עם Contents: Read &amp; Write</span>
+    </div>
+    <div class="modal-footer">
+      <button class="close-btn" onclick="saveGhSetup()">שמור הגדרות</button>
+      <button onclick="closeGhSetup()" style="background:white;border:1px solid #d1d5db;color:#6b7280;">ביטול</button>
+      <button onclick="clearGhSetup()" style="background:#FEE2E2;border:1px solid #FCA5A5;color:#991B1B;">נקה הכל</button>
+    </div>
+  </div>
 </div>
 
 <!-- BUDGET TAB -->
@@ -968,6 +1032,203 @@ document.getElementById('newIncome').addEventListener('input', e => {
 buildCategoryOptions();
 renderEditor();
 renderBudget();
+
+// ===== GitHub Sync =====
+const GH = {
+  cfg: JSON.parse(localStorage.getItem('gh_cfg') || 'null'),
+  token: sessionStorage.getItem('gh_token') || null,
+
+  isReady() { return !!(this.cfg && this.token); },
+
+  save_config(owner, repo, path, branch, token) {
+    this.cfg = { owner, repo, path: path || 'data.json', branch: branch || 'main' };
+    localStorage.setItem('gh_cfg', JSON.stringify(this.cfg));
+    this.token = token || null;
+    if (token) sessionStorage.setItem('gh_token', token);
+    else sessionStorage.removeItem('gh_token');
+    updateGhStatus();
+  },
+
+  clear_all() {
+    this.cfg = null;
+    this.token = null;
+    localStorage.removeItem('gh_cfg');
+    sessionStorage.removeItem('gh_token');
+    localStorage.removeItem('gh_last_sync');
+    updateGhStatus();
+  },
+
+  async _getFile() {
+    const { owner, repo, path, branch } = this.cfg;
+    const url = `https://api.github.com/repos/${owner}/${repo}/contents/${encodeURIComponent(path)}?ref=${encodeURIComponent(branch)}`;
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${this.token}`, Accept: 'application/vnd.github+json' } });
+    if (res.status === 404) return null;
+    if (!res.ok) {
+      const t = await res.text();
+      throw new Error(`HTTP ${res.status}: ${t.slice(0,200)}`);
+    }
+    return await res.json();
+  },
+
+  async save() {
+    if (!this.isReady()) throw new Error('הסנכרון לא מוגדר');
+    const existing = await this._getFile();
+    const state = currentState();
+    const content = b64encode(JSON.stringify(state, null, 2));
+    const body = {
+      message: `Update budget data — ${new Date().toLocaleString('he-IL')}`,
+      content,
+      branch: this.cfg.branch,
+      ...(existing && existing.sha ? { sha: existing.sha } : {})
+    };
+    const url = `https://api.github.com/repos/${this.cfg.owner}/${this.cfg.repo}/contents/${encodeURIComponent(this.cfg.path)}`;
+    const res = await fetch(url, {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${this.token}`,
+        Accept: 'application/vnd.github+json',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body)
+    });
+    if (!res.ok) {
+      const t = await res.text();
+      throw new Error(`HTTP ${res.status}: ${t.slice(0,200)}`);
+    }
+    localStorage.setItem('gh_last_sync', new Date().toISOString());
+    updateGhStatus();
+  },
+
+  async load() {
+    if (!this.isReady()) throw new Error('הסנכרון לא מוגדר');
+    const file = await this._getFile();
+    if (!file) throw new Error('הקובץ לא קיים בריפו. שמרי קודם.');
+    const json = b64decode(file.content.replace(/\n/g, ''));
+    const state = JSON.parse(json);
+    applyState(state);
+  }
+};
+
+function b64encode(s) { return btoa(unescape(encodeURIComponent(s))); }
+function b64decode(s) { return decodeURIComponent(escape(atob(s))); }
+
+function currentState() {
+  return {
+    v: 1,
+    saved_at: new Date().toISOString(),
+    transactions: txs,
+    categories: categories,
+    excluded: Array.from(excludedCategories),
+    adjustments: adjustments,
+    hypo_income: hypoIncome
+  };
+}
+
+function applyState(s) {
+  if (Array.isArray(s.transactions)) txs = s.transactions;
+  if (Array.isArray(s.categories)) categories = s.categories;
+  if (Array.isArray(s.excluded)) excludedCategories = new Set(s.excluded);
+  if (s.adjustments && typeof s.adjustments === 'object') adjustments = s.adjustments;
+  if (typeof s.hypo_income === 'number') hypoIncome = s.hypo_income;
+  buildCategoryOptions();
+  renderEditor();
+  const inp = document.getElementById('newIncome');
+  if (inp) inp.value = hypoIncome;
+  renderBudget();
+}
+
+function updateGhStatus() {
+  const status = document.getElementById('ghStatus');
+  const saveBtn = document.getElementById('ghSaveBtn');
+  const loadBtn = document.getElementById('ghLoadBtn');
+  const lastSync = document.getElementById('ghLastSync');
+  if (!status) return;
+  status.classList.remove('connected', 'warn');
+  if (GH.cfg && GH.token) {
+    status.textContent = `✓ ${GH.cfg.owner}/${GH.cfg.repo} → ${GH.cfg.path}`;
+    status.classList.add('connected');
+    saveBtn.disabled = false;
+    loadBtn.disabled = false;
+  } else if (GH.cfg) {
+    status.textContent = `🔑 ${GH.cfg.owner}/${GH.cfg.repo} — חסר Token (לחצי ⚙ הגדרות)`;
+    status.classList.add('warn');
+    saveBtn.disabled = true;
+    loadBtn.disabled = true;
+  } else {
+    status.textContent = 'לא מוגדר';
+    saveBtn.disabled = true;
+    loadBtn.disabled = true;
+  }
+  const last = localStorage.getItem('gh_last_sync');
+  lastSync.textContent = last ? 'סנכרון אחרון: ' + new Date(last).toLocaleString('he-IL') : '';
+}
+
+function openGhSetup() {
+  document.getElementById('ghModal').classList.add('show');
+  if (GH.cfg) {
+    document.getElementById('ghOwner').value = GH.cfg.owner || '';
+    document.getElementById('ghRepo').value = GH.cfg.repo || '';
+    document.getElementById('ghPath').value = GH.cfg.path || 'data.json';
+    document.getElementById('ghBranch').value = GH.cfg.branch || 'main';
+  }
+  document.getElementById('ghToken').value = GH.token || '';
+}
+function closeGhSetup() { document.getElementById('ghModal').classList.remove('show'); }
+function saveGhSetup() {
+  const owner = document.getElementById('ghOwner').value.trim();
+  const repo = document.getElementById('ghRepo').value.trim();
+  const path = document.getElementById('ghPath').value.trim() || 'data.json';
+  const branch = document.getElementById('ghBranch').value.trim() || 'main';
+  const token = document.getElementById('ghToken').value.trim();
+  if (!owner || !repo) { alert('יש להזין owner ו-repo'); return; }
+  GH.save_config(owner, repo, path, branch, token);
+  closeGhSetup();
+}
+function clearGhSetup() {
+  if (!confirm('לנקות את כל הגדרות GitHub?')) return;
+  GH.clear_all();
+  document.getElementById('ghOwner').value = '';
+  document.getElementById('ghRepo').value = '';
+  document.getElementById('ghPath').value = 'data.json';
+  document.getElementById('ghBranch').value = 'main';
+  document.getElementById('ghToken').value = '';
+  closeGhSetup();
+}
+
+async function ghSave() {
+  const btn = document.getElementById('ghSaveBtn');
+  const orig = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '⏳ שומר...';
+  try {
+    await GH.save();
+    btn.textContent = '✓ נשמר';
+    setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 2000);
+  } catch (e) {
+    alert('שגיאה בשמירה: ' + e.message);
+    btn.textContent = orig;
+    btn.disabled = false;
+  }
+}
+
+async function ghLoad() {
+  if (!confirm('לטעון נתונים מ-GitHub? כל שינוי לא-שמור יוחלף.')) return;
+  const btn = document.getElementById('ghLoadBtn');
+  const orig = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '⏳ טוען...';
+  try {
+    await GH.load();
+    btn.textContent = '✓ נטען';
+    setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 2000);
+  } catch (e) {
+    alert('שגיאה בטעינה: ' + e.message);
+    btn.textContent = orig;
+    btn.disabled = false;
+  }
+}
+
+updateGhStatus();
 </script>
 </body>
 </html>
