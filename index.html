@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>מחשבון תקציב — אפריל-יוני 2026</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: "Segoe UI", "Arial Hebrew", Arial, sans-serif; margin: 0; background: #f5f7fa; color: #1f2937; direction: rtl; }
+  header { background: #1F4E78; color: white; padding: 16px 24px; box-shadow: 0 2px 4px rgba(0,0,0,.1); }
+  header h1 { margin: 0; font-size: 18px; font-weight: 600; }
+  header .sub { margin-top: 4px; font-size: 12px; opacity: .85; }
+  .tabs { background: #163958; display: flex; padding: 0 24px; gap: 4px; }
+  .tab { padding: 12px 20px; cursor: pointer; color: rgba(255,255,255,.7); font-size: 14px; font-weight: 500; border-bottom: 3px solid transparent; transition: all .15s; }
+  .tab:hover { color: white; }
+  .tab.active { color: white; border-bottom-color: #FCD34D; background: rgba(255,255,255,.05); }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* Editor */
+  .toolbar { background: white; padding: 12px 24px; border-bottom: 1px solid #e5e7eb; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; position: sticky; top: 0; z-index: 9; }
+  .toolbar input, .toolbar select, .toolbar button { padding: 7px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; background: white; font-family: inherit; }
+  .toolbar input { width: 220px; }
+  .toolbar button { background: #1F4E78; color: white; border-color: #1F4E78; cursor: pointer; font-weight: 500; }
+  .toolbar button:hover { background: #163958; }
+  .toolbar button.secondary { background: white; color: #1F4E78; }
+  .toolbar button.success { background: #059669; border-color: #059669; }
+  .toolbar .stats { margin-right: auto; font-size: 12px; color: #6b7280; }
+  .toolbar .stats b { color: #1f2937; }
+  .bulk-bar { background: #FFF2CC; padding: 10px 24px; border-bottom: 1px solid #f59e0b; display: none; gap: 12px; align-items: center; font-size: 13px; }
+  .bulk-bar.show { display: flex; }
+  .bulk-bar select, .bulk-bar input { padding: 6px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-family: inherit; }
+  .bulk-bar button { padding: 6px 12px; border-radius: 6px; cursor: pointer; border: none; background: #1F4E78; color: white; font-weight: 500; font-family: inherit; }
+  .exclude-bar { background: #FEF2F2; padding: 8px 24px; border-bottom: 1px solid #FECACA; font-size: 12px; color: #991B1B; display: none; align-items: center; gap: 10px; }
+  .exclude-bar.show { display: flex; flex-wrap: wrap; }
+  .exclude-bar .chip { background: white; border: 1px solid #FCA5A5; color: #991B1B; padding: 3px 8px; border-radius: 12px; font-size: 12px; cursor: pointer; }
+  .exclude-bar .chip:hover { background: #FEE2E2; }
+  .exclude-bar .chip::after { content: " ✕"; font-weight: bold; }
+  .exclude-bar .clear { margin-right: auto; text-decoration: underline; cursor: pointer; }
+
+  .container { padding: 16px 24px; max-width: 1500px; margin: 0 auto; }
+  table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.08); font-size: 13px; }
+  thead { background: #1F4E78; color: white; }
+  th, td { padding: 8px 12px; text-align: right; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+  th { font-weight: 600; font-size: 12px; cursor: pointer; user-select: none; }
+  th .sort-arrow { opacity: .5; margin-right: 4px; font-size: 10px; }
+  tbody tr:hover { background: #f8fafc; }
+  tbody tr.selected { background: #FEF3C7; }
+  tbody tr.changed td { background: #DBEAFE !important; }
+  /* Numeric: right-aligned in column, LTR internal so digits format correctly */
+  td.amount, td.num { text-align: right; font-variant-numeric: tabular-nums; font-weight: 500; unicode-bidi: plaintext; }
+  td.merchant { font-weight: 500; max-width: 280px; }
+  td.merchant .merchant-name { display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; vertical-align: middle; }
+  td.merchant .rec-badge { background: #FEF3C7; color: #92400E; font-size: 10px; padding: 1px 6px; border-radius: 4px; margin-right: 4px; }
+  td.details { color: #6b7280; font-size: 12px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  td.category-cell select { width: 100%; padding: 4px 6px; border: 1px solid #d1d5db; border-radius: 4px; background: white; font-size: 13px; font-family: inherit; }
+  td.category-cell select.modified { border-color: #2563eb; background: #DBEAFE; }
+  .checkbox-col { width: 32px; }
+  .checkbox-col input { cursor: pointer; }
+  .card-pill { display: inline-block; background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-family: ui-monospace, monospace; font-size: 11px; unicode-bidi: plaintext; }
+  .month-pill { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 500; }
+  .month-04 { background: #DBEAFE; color: #1E40AF; }
+  .month-05 { background: #D1FAE5; color: #065F46; }
+  .month-06 { background: #FCE7F3; color: #9D174D; }
+  .summary-panel { background: white; padding: 12px 16px; border-radius: 8px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+  .summary-panel h3 { margin: 0 0 8px 0; font-size: 13px; color: #6b7280; }
+  .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; }
+  .summary-cell { padding: 8px; background: #f8fafc; border-radius: 6px; }
+  .summary-cell .label { font-size: 11px; color: #6b7280; }
+  .summary-cell .value { font-size: 16px; font-weight: 600; color: #1f2937; font-variant-numeric: tabular-nums; text-align: right; unicode-bidi: plaintext; }
+  .help { background: #EFF6FF; padding: 10px 14px; margin-bottom: 12px; border-right: 3px solid #2563eb; font-size: 12px; border-radius: 4px; color: #1E40AF; }
+  .help b { font-weight: 600; }
+  .footer { padding: 24px; text-align: center; color: #6b7280; font-size: 12px; }
+
+  /* Modal */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: none; align-items: center; justify-content: center; z-index: 100; }
+  .modal-overlay.show { display: flex; }
+  .modal { background: white; border-radius: 10px; padding: 20px 24px; min-width: 420px; max-width: 600px; max-height: 80vh; overflow-y: auto; box-shadow: 0 10px 30px rgba(0,0,0,.2); }
+  .modal h2 { margin: 0 0 12px 0; font-size: 17px; color: #1F4E78; }
+  .modal .desc { font-size: 13px; color: #6b7280; margin-bottom: 16px; }
+  .cat-list { list-style: none; padding: 0; margin: 0 0 14px 0; max-height: 320px; overflow-y: auto; border: 1px solid #e5e7eb; border-radius: 8px; }
+  .cat-list li { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid #f1f5f9; }
+  .cat-list li:last-child { border-bottom: none; }
+  .cat-list li.in-use { background: #f8fafc; }
+  .cat-list .name { flex: 1; font-size: 13px; }
+  .cat-list .count { color: #6b7280; font-size: 11px; }
+  .cat-list button { padding: 4px 8px; border-radius: 4px; border: 1px solid #d1d5db; background: white; cursor: pointer; font-size: 12px; font-family: inherit; }
+  .cat-list button.danger { background: #FEE2E2; border-color: #FCA5A5; color: #991B1B; }
+  .cat-list button.danger:disabled { opacity: .4; cursor: not-allowed; }
+  .add-row { display: flex; gap: 8px; margin-bottom: 14px; }
+  .add-row input { flex: 1; padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 6px; font-family: inherit; font-size: 13px; }
+  .add-row button { padding: 8px 14px; border: none; border-radius: 6px; background: #059669; color: white; cursor: pointer; font-weight: 500; font-family: inherit; }
+  .modal-footer { display: flex; gap: 8px; justify-content: flex-start; }
+  .modal-footer button { padding: 8px 14px; border-radius: 6px; cursor: pointer; font-family: inherit; }
+  .modal-footer .close-btn { background: #1F4E78; color: white; border: none; }
+  .edit-row { display: flex; gap: 8px; padding: 8px 12px; background: #FEF3C7; border-bottom: 1px solid #f1f5f9; }
+  .edit-row input { flex: 1; padding: 6px 8px; border: 1px solid #d1d5db; border-radius: 4px; font-family: inherit; font-size: 13px; }
+  .edit-row button { padding: 4px 10px; border-radius: 4px; border: none; cursor: pointer; font-size: 12px; font-family: inherit; }
+  .edit-row button.save { background: #059669; color: white; }
+  .edit-row button.cancel { background: white; color: #6b7280; border: 1px solid #d1d5db; }
+
+  /* Budget */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  @media (max-width: 980px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+  .card { background: white; padding: 16px 20px; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,.08); margin-bottom: 16px; }
+  .card h2 { margin: 0 0 12px 0; font-size: 16px; color: #1F4E78; border-bottom: 2px solid #e5e7eb; padding-bottom: 8px; }
+  .card h3 { margin: 14px 0 8px 0; font-size: 13px; color: #6b7280; }
+  tr.total td { font-weight: 700; background: #f8fafc; border-top: 2px solid #1F4E78; }
+  .control-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid #f1f5f9; }
+  .control-row:last-child { border-bottom: none; }
+  .control-row .cat-name { flex: 1; font-size: 13px; }
+  .control-row .baseline { font-size: 11px; color: #9ca3af; min-width: 90px; text-align: right; unicode-bidi: plaintext; }
+  .control-row input[type="number"] { width: 90px; padding: 5px 8px; border: 1px solid #d1d5db; border-radius: 5px; text-align: right; font-family: inherit; font-size: 13px; unicode-bidi: plaintext; }
+  .control-row input[type="number"].modified { border-color: #2563eb; background: #DBEAFE; }
+  .control-row input[type="range"] { flex: 0 0 110px; cursor: pointer; }
+  .control-row .pct { font-size: 11px; color: #6b7280; min-width: 40px; text-align: center; }
+  .income-input { width: 100%; padding: 10px 12px; font-size: 18px; border: 2px solid #1F4E78; border-radius: 8px; font-family: inherit; text-align: right; font-weight: 600; unicode-bidi: plaintext; }
+  .preset-btn { padding: 6px 10px; border: 1px solid #d1d5db; background: white; border-radius: 6px; cursor: pointer; font-size: 12px; font-family: inherit; margin-left: 6px; }
+  .preset-btn:hover { background: #f3f4f6; }
+  .stat-box { background: #f8fafc; padding: 12px; border-radius: 8px; }
+  .stat-box .label { font-size: 11px; color: #6b7280; }
+  .stat-box .value { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; margin-top: 4px; text-align: right; unicode-bidi: plaintext; }
+  .bar-container { background: #f3f4f6; height: 24px; border-radius: 12px; overflow: hidden; margin: 12px 0; display: flex; direction: ltr; }
+  .bar-segment { display: flex; align-items: center; justify-content: center; color: white; font-size: 11px; font-weight: 600; }
+  .bar-expense { background: #DC2626; }
+  .bar-savings { background: #059669; }
+  .legend { display: flex; gap: 16px; font-size: 12px; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .legend-dot { width: 12px; height: 12px; border-radius: 3px; }
+  .actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  button.primary { background: #1F4E78; color: white; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-family: inherit; font-weight: 500; }
+  button.secondary { background: white; color: #1F4E78; border: 1px solid #1F4E78; padding: 8px 14px; border-radius: 6px; cursor: pointer; font-family: inherit; font-weight: 500; }
+  .note { font-size: 11px; color: #6b7280; margin-top: 8px; line-height: 1.5; }
+  .alert-positive { background: #ECFDF5; border-right: 3px solid #059669; padding: 10px 14px; border-radius: 6px; color: #065F46; font-size: 13px; margin-top: 12px; }
+  .alert-negative { background: #FEF2F2; border-right: 3px solid #DC2626; padding: 10px 14px; border-radius: 6px; color: #991B1B; font-size: 13px; margin-top: 12px; }
+  .scroll-cats { max-height: 480px; overflow-y: auto; padding-left: 4px; }
+  .sync-badge { display: inline-block; background: #FCD34D; color: #78350F; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; margin-right: 8px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>💰 מחשבון תקציב — אפריל עד יוני 2026</h1>
+  <div class="sub">עורך עסקאות + מחשבון תקציב במקום אחד. שינויים בקטגוריות מתעדכנים אוטומטית בחישובי התקציב.</div>
+</header>
+
+<div class="tabs">
+  <div class="tab active" data-tab="budget" onclick="switchTab('budget')">🧮 מחשבון תקציב</div>
+  <div class="tab" data-tab="editor" onclick="switchTab('editor')">📝 עורך עסקאות</div>
+</div>
+
+<!-- BUDGET TAB -->
+<div class="tab-content active" id="tab-budget">
+  <div class="container">
+
+    <div class="grid-2">
+      <div class="card">
+        <h2>📈 הכנסות חודשיות (היסטוריה)</h2>
+        <table>
+          <thead><tr><th>חודש</th><th class="num">סכום</th></tr></thead>
+          <tbody id="incomeHistory"></tbody>
+        </table>
+        <div class="note">משכורת מבנק. פברואר חלקי. הממוצע המלא הוא ממרץ ואפריל בלבד.</div>
+        <h3>הכנסה נוספת (לא משכורת)</h3>
+        <table>
+          <tbody id="otherIncomeList"></tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <h2>📉 הוצאות חודשיות (ממוצע 3 חודשים) <span class="sync-badge">חי</span></h2>
+        <div class="grid-3" style="margin-bottom:14px">
+          <div class="stat-box">
+            <div class="label">כרטיסי אשראי</div>
+            <div class="value" id="ccTotal"></div>
+          </div>
+          <div class="stat-box">
+            <div class="label">הוצאות בנק (לא כרטיס)</div>
+            <div class="value" id="ncTotal"></div>
+          </div>
+          <div class="stat-box">
+            <div class="label">סך הכל</div>
+            <div class="value" id="allTotal" style="color:#DC2626"></div>
+          </div>
+        </div>
+        <div class="note">"חי" — הסכומים מתעדכנים בזמן אמת כשאתה משנה קטגוריות בטאב "עורך עסקאות".</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>⚖️ מצב נוכחי: הכנסות מול הוצאות</h2>
+      <div class="grid-3">
+        <div class="stat-box" style="background:#ECFDF5">
+          <div class="label">הכנסה (משכורת)</div>
+          <div class="value" id="curIncome" style="color:#059669"></div>
+        </div>
+        <div class="stat-box" style="background:#FEF2F2">
+          <div class="label">סך הוצאות</div>
+          <div class="value" id="curExpense" style="color:#DC2626"></div>
+        </div>
+        <div class="stat-box" id="curBalanceBox">
+          <div class="label">יתרה חודשית (חיסכון)</div>
+          <div class="value" id="curBalance"></div>
+        </div>
+      </div>
+      <div class="bar-container" id="curBar"></div>
+      <div class="legend" id="curLegend"></div>
+    </div>
+
+    <div class="card">
+      <h2>🧮 מחשבון — תכנן עם הכנסה אחרת</h2>
+      <p style="margin:0 0 12px 0; font-size:13px; color:#6b7280;">הכנס הכנסה היפותטית, ועדכן כל קטגוריית הוצאה (% מהבסיס או סכום חודשי קבוע).</p>
+
+      <div class="grid-2">
+        <div>
+          <h3>הכנסה היפותטית (₪/חודש)</h3>
+          <input id="newIncome" class="income-input" type="number" step="100" />
+          <div style="margin-top:8px">
+            <span class="preset-btn" onclick="setIncome(20000)">20,000</span>
+            <span class="preset-btn" onclick="setIncome(25000)">25,000</span>
+            <span class="preset-btn" onclick="setIncome(30000)">30,000</span>
+            <span class="preset-btn" onclick="setIncome(35000)">35,000</span>
+            <span class="preset-btn" onclick="resetIncome()">איפוס</span>
+          </div>
+
+          <h3 style="margin-top:20px">תוצאה</h3>
+          <div class="grid-3">
+            <div class="stat-box">
+              <div class="label">הכנסה</div>
+              <div class="value" id="newIncomeShow" style="color:#059669"></div>
+            </div>
+            <div class="stat-box">
+              <div class="label">הוצאות מתוכננות</div>
+              <div class="value" id="newExpense" style="color:#DC2626"></div>
+            </div>
+            <div class="stat-box" id="newBalanceBox">
+              <div class="label">יתרה חודשית</div>
+              <div class="value" id="newBalance"></div>
+            </div>
+          </div>
+          <div class="bar-container" id="newBar"></div>
+          <div class="legend" id="newLegend"></div>
+          <div id="advisory"></div>
+
+          <h3 style="margin-top:16px">הקלות מהירות</h3>
+          <div class="actions">
+            <button class="secondary" onclick="setAllPct(100)">100% (כמו היום)</button>
+            <button class="secondary" onclick="setAllPct(90)">−10% הכל</button>
+            <button class="secondary" onclick="setAllPct(80)">−20% הכל</button>
+            <button class="secondary" onclick="setAllPct(75)">−25% הכל</button>
+            <button class="secondary" onclick="resetAdjustments()">איפוס התאמות</button>
+          </div>
+        </div>
+
+        <div>
+          <h3>התאם כל קטגוריה</h3>
+          <div class="scroll-cats" id="catControls"></div>
+        </div>
+      </div>
+
+      <div class="actions" style="margin-top:16px">
+        <button class="primary" onclick="downloadBudgetCSV()">⬇ הורד תקציב מתוכנן ל-CSV</button>
+        <button class="secondary" onclick="window.print()">🖨 הדפס</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>📋 פירוט הוצאות לפי קטגוריה</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>קטגוריה</th>
+            <th>סוג</th>
+            <th class="num">סך 3 חודשים</th>
+            <th class="num">ממוצע חודשי</th>
+            <th class="num">% מההכנסה (נוכחי)</th>
+            <th class="num">תקציב חדש</th>
+          </tr>
+        </thead>
+        <tbody id="catTable"></tbody>
+      </table>
+    </div>
+
+  </div>
+</div>
+
+<!-- EDITOR TAB -->
+<div class="tab-content" id="tab-editor">
+  <div class="toolbar">
+    <input id="search" type="search" placeholder="חיפוש בית עסק או פרטים..." />
+    <select id="filter-category"><option value="">כל הקטגוריות</option></select>
+    <select id="filter-month">
+      <option value="">כל החודשים</option>
+      <option value="04">אפריל</option>
+      <option value="05">מאי</option>
+      <option value="06">יוני</option>
+    </select>
+    <select id="filter-card">
+      <option value="">שני הכרטיסים</option>
+      <option value="2693">2693</option>
+      <option value="5753">5753</option>
+    </select>
+    <select id="exclude-add">
+      <option value="">— סנן החוצה קטגוריה —</option>
+    </select>
+    <button onclick="openCategoryManager()" class="secondary">⚙ נהל קטגוריות</button>
+    <button onclick="resetFilters()" class="secondary">איפוס סינון</button>
+    <button onclick="downloadCSV()" class="success">⬇ הורד CSV מעודכן</button>
+    <button onclick="downloadChangesOnly()" class="secondary">⬇ שינויים בלבד</button>
+    <div class="stats" id="stats"></div>
+  </div>
+
+  <div class="exclude-bar" id="excludeBar">
+    <span><b>קטגוריות מוסתרות:</b></span>
+    <div id="excludeChips" style="display:flex; gap:6px; flex-wrap:wrap;"></div>
+    <span class="clear" onclick="clearExcludes()">נקה הכל</span>
+  </div>
+
+  <div class="bulk-bar" id="bulkBar">
+    <span><b id="bulkCount">0</b> נבחרו</span>
+    <span>קבע קטגוריה ל:</span>
+    <select id="bulkCategory"></select>
+    <button onclick="applyBulk()">החל על הנבחרים</button>
+    <button onclick="clearSelection()" class="secondary" style="background:white;color:#1F4E78;">נקה בחירה</button>
+  </div>
+
+  <div class="container">
+    <div class="summary-panel">
+      <h3>סיכומים חיים (תצוגה מסוננת)</h3>
+      <div class="summary-grid" id="summaryGrid"></div>
+    </div>
+
+    <div class="help">
+      <b>טיפים:</b> שינויים בקטגוריות כאן מתעדכנים אוטומטית במחשבון התקציב. לחץ <b>⚙ נהל קטגוריות</b> להוסיף / לשנות שם / למחוק. שום דבר לא נשמר עד שתלחץ על <b>הורד CSV מעודכן</b>.
+    </div>
+
+    <table id="tx-table">
+      <thead>
+        <tr>
+          <th class="checkbox-col"><input type="checkbox" id="selectAll" onclick="toggleSelectAll(this)" /></th>
+          <th data-sort="date">תאריך <span class="sort-arrow">⇅</span></th>
+          <th data-sort="merchant">בית עסק <span class="sort-arrow">⇅</span></th>
+          <th data-sort="amount" class="num">סכום ₪ <span class="sort-arrow">⇅</span></th>
+          <th data-sort="card">כרטיס <span class="sort-arrow">⇅</span></th>
+          <th data-sort="month">חודש <span class="sort-arrow">⇅</span></th>
+          <th data-sort="category">קטגוריה <span class="sort-arrow">⇅</span></th>
+          <th>פרטים</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+    <div class="footer">
+      נבנה מ-6 פירוטי כרטיסי אשראי (מסטרקארד 2693 + 5753, אפריל–יוני 2026). 243 עסקאות, סך ₪29,416.84.
+    </div>
+  </div>
+</div>
+
+<!-- Category Manager Modal -->
+<div class="modal-overlay" id="catModal" onclick="if(event.target===this) closeCategoryManager()">
+  <div class="modal">
+    <h2>ניהול קטגוריות</h2>
+    <div class="desc">הוסף קטגוריות חדשות, שנה שם קיימת (משנה את כל העסקאות), או מחק קטגוריה שאינה בשימוש.</div>
+    <div class="add-row">
+      <input id="newCatInput" type="text" placeholder="שם קטגוריה חדשה" onkeydown="if(event.key==='Enter') addCategory()" />
+      <button onclick="addCategory()">+ הוסף</button>
+    </div>
+    <ul class="cat-list" id="catList"></ul>
+    <div class="modal-footer">
+      <button class="close-btn" onclick="closeCategoryManager()">סגור</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const DATA = {"transactions": [{"id": 384440020, "date": "2026-05-19", "merchant": "אסתר rehtse", "amount": 17.0, "card": "2693", "month": "06", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 385110099, "date": "2026-05-19", "merchant": "ג'וסה קולד פרס", "amount": 63.0, "card": "2693", "month": "06", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 381654615, "date": "2026-05-19", "merchant": "דרורית רון בעמ", "amount": 180.0, "card": "2693", "month": "06", "category": "ספורט / כושר", "recurring": false, "details": ""}, {"id": 384042910, "date": "2026-05-19", "merchant": "זהר לימודים אזוטריים", "amount": 420.0, "card": "5753", "month": "06", "category": "חינוך / קורסים", "recurring": false, "details": ""}, {"id": 385114978, "date": "2026-05-19", "merchant": "מייזון קייזר", "amount": 25.0, "card": "2693", "month": "06", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 378438702, "date": "2026-05-18", "merchant": "גוד בוי קפה", "amount": 14.0, "card": "2693", "month": "06", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 368977631, "date": "2026-05-17", "merchant": "אגף המכס ומע\"מ - אינ", "amount": 95.0, "card": "5753", "month": "06", "category": "עירייה / מיסים", "recurring": false, "details": ""}, {"id": 369284698, "date": "2026-05-17", "merchant": "סופר יודה אפליקציה", "amount": 168.44, "card": "5753", "month": "06", "category": "מצרכים / סופר", "recurring": false, "details": ""}, {"id": 365012569, "date": "2026-05-16", "merchant": "אסתר rehtse", "amount": 17.0, "card": "2693", "month": "06", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 364092379, "date": "2026-05-16", "merchant": "גווילין תל אביב בע\"מ", "amount": 24.0, "card": "2693", "month": "06", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 362004102, "date": "2026-05-15", "merchant": "CARREFOUR כיכר דיזנג", "amount": 75.75, "card": "2693", "month": "06", "category": "מצרכים / סופר", "recurring": false, "details": "הנחה ₪1.55"}, {"id": 365350570, "date": "2026-05-15", "merchant": "WOLT", "amount": 85.05, "card": "5753", "month": "06", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 365012557, "date": "2026-05-15", "merchant": "אסתר rehtse", "amount": 17.0, "card": "2693", "month": "06", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 362092270, "date": "2026-05-15", "merchant": "הום פרזול", "amount": 208.8, "card": "5753", "month": "06", "category": "קניות / בית / מתנות", "recurring": false, "details": ""}, {"id": 361919447, "date": "2026-05-15", "merchant": "סופר יודה אפליקציה", "amount": 104.3, "card": "5753", "month": "06", "category": "מצרכים / סופר", "recurring": false, "details": ""}, {"id": 362840032, "date": "2026-05-15", "merchant": "סופר- פארם כיכר דיזנ", "amount": 882.59, "card": "2693", "month": "06", "category": "בית מרקחת / בריאות", "recurring": false, "details": ""}, {"id": 354241158, "date": "2026-05-14", "merchant": "UPAPP", "amount": 25.0, "card": "5753", "month": "06", "category": "ספורט / כושר", "recurring": false, "details": ""}, {"id": 357847605, "date": "2026-05-14", "merchant": "mela דיזינגוף", "amount": 13.0, "card": "2693", "month": "06", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 354100293, "date": "2026-05-14", "merchant": "אופטיקה רואים שקוף-", "amount": 1150.0, "card": "2693", "month": "06", "category": "אופטיקה / משקפיים", "recurring": false, "details": "תשלום 1 מתוך 2"}, {"id": 352420534, "date": "2026-05-14", "merchant": "עיגול לטובה מגמה ירו", "amount": 13.48, "card": "5753", "month": "05", "category": "תרומות / צדקה", "recurring": true, "details": "הוראת קבע"}, {"id": 358561126, "date": "2026-05-14", "merchant": "שחרזאד אוכל ביתי - מ", "amount": 50.0, "card": "2693", "month": "06", "category": "מצרכים / סופר", "recurring": false, "details": ""}, {"id": 347292401, "date": "2026-05-13", "merchant": "HOT MOBILE", "amount": -30.49, "card": "2693", "month": "06", "category": "תקשורת / אינטרנט", "recurring": true, "details": "הוראת קבע"}, {"id": 349874210, "date": "2026-05-13", "merchant": "אסתר rehtse", "amount": 17.0, "card": "2693", "month": "06", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 347756907, "date": "2026-05-13", "merchant": "סופר יודה אפליקציה", "amount": 105.91, "card": "5753", "month": "05", "category": "מצרכים / סופר", "recurring": false, "details": ""}, {"id": 344014626, "date": "2026-05-12", "merchant": "אסתר rehtse", "amount": 17.0, "card": "2693", "month": "06", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 344652653, "date": "2026-05-12", "merchant": "בייקרי צינה דיזנגוף", "amount": 63.0, "card": "2693", "month": "06", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 337657793, "date": "2026-05-11", "merchant": "בייקרי צינה דיזנגוף", "amount": 72.65, "card": "2693", "month": "06", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 335778730, "date": "2026-05-11", "merchant": "סופר יודה פינסקר", "amount": 165.6, "card": "5753", "month": "05", "category": "מצרכים / סופר", "recurring": false, "details": ""}, {"id": 331608741, "date": "2026-05-10", "merchant": "אסתר rehtse", "amount": 15.0, "card": "2693", "month": "06", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 328325886, "date": "2026-05-10", "merchant": "דרורית רון בעמ", "amount": 240.0, "card": "2693", "month": "06", "category": "ספורט / כושר", "recurring": false, "details": ""}, {"id": 329183566, "date": "2026-05-10", "merchant": "סופר יודה אפליקציה", "amount": 127.22, "card": "5753", "month": "05", "category": "מצרכים / סופר", "recurring": false, "details": ""}, {"id": 329183567, "date": "2026-05-10", "merchant": "סופר יודה אפליקציה", "amount": 35.8, "card": "5753", "month": "05", "category": "מצרכים / סופר", "recurring": false, "details": ""}, {"id": 335477432, "date": "2026-05-10", "merchant": "סיבוס פלאקסי", "amount": 15.88, "card": "2693", "month": "06", "category": "דיגיטל / אפליקציות / מנויים", "recurring": false, "details": ""}, {"id": 318528346, "date": "2026-05-09", "merchant": "APPLE.COM/BILL", "amount": 15.8, "card": "2693", "month": "05", "category": "דיגיטל / אפליקציות / מנויים", "recurring": true, "details": "אתר חו\"ל / הוראת קבע"}, {"id": 325091962, "date": "2026-05-09", "merchant": "גרציאני", "amount": 33.0, "card": "2693", "month": "06", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 321548908, "date": "2026-05-09", "merchant": "סופר יודה אפליקציה", "amount": 138.2, "card": "5753", "month": "05", "category": "מצרכים / סופר", "recurring": false, "details": ""}, {"id": 321548907, "date": "2026-05-09", "merchant": "סופר יודה אפליקציה", "amount": 11.19, "card": "5753", "month": "05", "category": "מצרכים / סופר", "recurring": false, "details": ""}, {"id": 314577737, "date": "2026-05-08", "merchant": "GETT", "amount": 64.68, "card": "5753", "month": "05", "category": "תחבורה / דלק / חניה", "recurring": false, "details": ""}, {"id": 321593279, "date": "2026-05-08", "merchant": "UPAPP", "amount": 25.0, "card": "5753", "month": "05", "category": "ספורט / כושר", "recurring": false, "details": ""}, {"id": 324201402, "date": "2026-05-08", "merchant": "בייקרי צינה דיזנגוף", "amount": 52.0, "card": "2693", "month": "06", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 323832925, "date": "2026-05-08", "merchant": "גו טו", "amount": 453.25, "card": "2693", "month": "06", "category": "תחבורה / דלק / חניה", "recurring": true, "details": "הוראת קבע"}, {"id": 324197190, "date": "2026-05-08", "merchant": "גוד בוי קפה", "amount": 16.0, "card": "2693", "month": "06", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 318780977, "date": "2026-05-08", "merchant": "עיגול לטובה נשים במצ", "amount": 10.48, "card": "2693", "month": "05", "category": "תרומות / צדקה", "recurring": true, "details": "הוראת קבע"}, {"id": 316339184, "date": "2026-05-07", "merchant": "VIASAT IN-FLIGHT WI-FI", "amount": 11.94, "card": "2693", "month": "05", "category": "נסיעות / טיולים", "recurring": false, "details": "אתר חו\"ל"}, {"id": 314612793, "date": "2026-05-07", "merchant": "הוצאת עיתון הארץ-אינ", "amount": 49.0, "card": "2693", "month": "05", "category": "חדשות / מדיה", "recurring": true, "details": "הוראת קבע"}, {"id": 308312697, "date": "2026-05-06", "merchant": "בזק ENERGY בזק ג'ן))", "amount": 219.76, "card": "2693", "month": "05", "category": "תקשורת / אינטרנט", "recurring": true, "details": "הוראת קבע"}, {"id": 307581156, "date": "2026-05-06", "merchant": "בזק הוראת קבע", "amount": 213.38, "card": "2693", "month": "05", "category": "תקשורת / אינטרנט", "recurring": true, "details": "הוראת קבע"}, {"id": 293156131, "date": "2026-05-03", "merchant": "הראל בריאות", "amount": 25.66, "card": "2693", "month": "05", "category": "ביטוח / פנסיה", "recurring": true, "details": "הוראת קבע"}, {"id": 286183722, "date": "2026-05-02", "merchant": "WOLT", "amount": 67.2, "card": "5753", "month": "05", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 291276686, "date": "2026-05-02", "merchant": "אל על נתיבי אויר ליש", "amount": 119.19, "card": "5753", "month": "05", "category": "נסיעות / טיולים", "recurring": false, "details": ""}, {"id": 285275069, "date": "2026-05-01", "merchant": "iCount", "amount": 35.87, "card": "5753", "month": "05", "category": "דיגיטל / אפליקציות / מנויים", "recurring": false, "details": ""}, {"id": 286185296, "date": "2026-05-01", "merchant": "אוטו-תל", "amount": 10.0, "card": "5753", "month": "05", "category": "תחבורה / דלק / חניה", "recurring": true, "details": "הוראת קבע"}, {"id": 278154805, "date": "2026-04-30", "merchant": "WOLT", "amount": 91.35, "card": "5753", "month": "05", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 271698769, "date": "2026-04-29", "merchant": "WOLT", "amount": 29.0, "card": "5753", "month": "05", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 267389552, "date": "2026-04-29", "merchant": "YES", "amount": 99.8, "card": "5753", "month": "05", "category": "דיגיטל / אפליקציות / מנויים", "recurring": true, "details": "הוראת קבע"}, {"id": 263611264, "date": "2026-04-28", "merchant": "פז גז", "amount": 298.21, "card": "5753", "month": "05", "category": "תשתיות (מים/חשמל)", "recurring": true, "details": "הוראת קבע"}, {"id": 251396450, "date": "2026-04-27", "merchant": "PAYBOX", "amount": 300.0, "card": "5753", "month": "05", "category": "העברות", "recurring": false, "details": ""}, {"id": 250724201, "date": "2026-04-26", "merchant": "WOLT", "amount": 73.5, "card": "5753", "month": "05", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 237500908, "date": "2026-04-24", "merchant": "מנורה מבטחים-חיים/בר", "amount": 1225.63, "card": "5753", "month": "05", "category": "ביטוח / פנסיה", "recurring": true, "details": "הוראת קבע"}, {"id": 227773325, "date": "2026-04-23", "merchant": "GETT", "amount": 160.6, "card": "2693", "month": "05", "category": "תחבורה / דלק / חניה", "recurring": false, "details": ""}, {"id": 230490565, "date": "2026-04-23", "merchant": "WOLT", "amount": 92.4, "card": "5753", "month": "05", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 230238349, "date": "2026-04-23", "merchant": "אסתר rehtse", "amount": 17.0, "card": "2693", "month": "05", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 228159979, "date": "2026-04-23", "merchant": "ג א ר  היינמן טרמינל", "amount": 1057.18, "card": "2693", "month": "05", "category": "נסיעות / טיולים", "recurring": false, "details": ""}, {"id": 230908750, "date": "2026-04-23", "merchant": "ג?רה קפה שופ", "amount": 18.0, "card": "2693", "month": "05", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 230916068, "date": "2026-04-23", "merchant": "לחמים דיזנגוף", "amount": 155.0, "card": "2693", "month": "05", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 227536787, "date": "2026-04-23", "merchant": "לנדוור נתבג רוטנדה", "amount": 63.0, "card": "2693", "month": "05", "category": "נסיעות / טיולים", "recurring": false, "details": ""}, {"id": 243177926, "date": "2026-04-23", "merchant": "פועלים- דמי כרטיס", "amount": 0.0, "card": "5753", "month": "05", "category": "עמלות בנק / אשראי", "recurring": false, "details": "הנחה ₪13.77"}, {"id": 222545564, "date": "2026-04-22", "merchant": "גו טו", "amount": 446.75, "card": "2693", "month": "05", "category": "מנויים / הוראות קבע", "recurring": true, "details": "הוראת קבע"}, {"id": 218896821, "date": "2026-04-22", "merchant": "סופר יודה אפליקציה", "amount": 113.7, "card": "5753", "month": "05", "category": "מצרכים / סופר", "recurring": false, "details": ""}, {"id": 218992742, "date": "2026-04-21", "merchant": "CARREFOUR כיכר דיזנג", "amount": 160.44, "card": "2693", "month": "05", "category": "מצרכים / סופר", "recurring": false, "details": "הנחה ₪3.27"}, {"id": 210626897, "date": "2026-04-21", "merchant": "HOT MOBILE", "amount": 52.9, "card": "2693", "month": "05", "category": "תקשורת / אינטרנט", "recurring": true, "details": "הוראת קבע"}, {"id": 221980858, "date": "2026-04-21", "merchant": "אסתר rehtse", "amount": 17.0, "card": "2693", "month": "05", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 218895461, "date": "2026-04-21", "merchant": "סופר יודה אפליקציה", "amount": 36.5, "card": "5753", "month": "05", "category": "מצרכים / סופר", "recurring": false, "details": ""}, {"id": 218895462, "date": "2026-04-21", "merchant": "סופר יודה אפליקציה", "amount": 116.6, "card": "5753", "month": "05", "category": "מצרכים / סופר", "recurring": false, "details": ""}, {"id": 222350956, "date": "2026-04-21", "merchant": "פספורטכארד ישראל סוכ", "amount": 69.07, "card": "5753", "month": "05", "category": "נסיעות / טיולים", "recurring": false, "details": ""}, {"id": 213464990, "date": "2026-04-20", "merchant": "אסתר rehtse", "amount": 17.0, "card": "2693", "month": "05", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 214690386, "date": "2026-04-20", "merchant": "גוד בוי קפה", "amount": 14.0, "card": "2693", "month": "05", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 210055339, "date": "2026-04-20", "merchant": "דרורית רון בעמ", "amount": 160.0, "card": "2693", "month": "05", "category": "ספורט / כושר", "recurring": false, "details": ""}, {"id": 213743644, "date": "2026-04-20", "merchant": "פספורטכארד ישראל סוכ", "amount": 135.14, "card": "5753", "month": "05", "category": "נסיעות / טיולים", "recurring": false, "details": ""}, {"id": 206722157, "date": "2026-04-19", "merchant": "א.בקל", "amount": 80.0, "card": "2693", "month": "05", "category": "קניות / בית / מתנות", "recurring": false, "details": ""}, {"id": 206722156, "date": "2026-04-19", "merchant": "א.בקל", "amount": 23.4, "card": "2693", "month": "05", "category": "קניות / בית / מתנות", "recurring": false, "details": ""}, {"id": 205513304, "date": "2026-04-19", "merchant": "מקס 10", "amount": 15.8, "card": "2693", "month": "05", "category": "קניות / בית / מתנות", "recurring": false, "details": ""}, {"id": 206715621, "date": "2026-04-19", "merchant": "קפה פיקולו", "amount": 11.0, "card": "2693", "month": "05", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 200564345, "date": "2026-04-18", "merchant": "גרציאני", "amount": 47.0, "card": "2693", "month": "05", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 197474105, "date": "2026-04-18", "merchant": "הטחנה לתרבות אזרחית-", "amount": 25.63, "card": "5753", "month": "05", "category": "בידור", "recurring": false, "details": ""}, {"id": 197466075, "date": "2026-04-18", "merchant": "סופר יודה אפליקציה", "amount": 91.64, "card": "5753", "month": "05", "category": "מצרכים / סופר", "recurring": false, "details": ""}, {"id": 199689795, "date": "2026-04-17", "merchant": "בלונזרי 96 פרישן", "amount": 46.0, "card": "2693", "month": "05", "category": "קניות / בית / מתנות", "recurring": false, "details": ""}, {"id": 199682283, "date": "2026-04-17", "merchant": "ג'וסה קולד פרס", "amount": 64.0, "card": "2693", "month": "05", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 201058868, "date": "2026-04-17", "merchant": "גו טו", "amount": 347.75, "card": "2693", "month": "05", "category": "תחבורה / דלק / חניה", "recurring": true, "details": "הוראת קבע"}, {"id": 200049698, "date": "2026-04-17", "merchant": "גונגל בעיר", "amount": 274.0, "card": "5753", "month": "05", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 199682896, "date": "2026-04-17", "merchant": "ירוק ירוק", "amount": 160.0, "card": "2693", "month": "05", "category": "קניות / בית / מתנות", "recurring": false, "details": ""}, {"id": 198416474, "date": "2026-04-17", "merchant": "סופר- פארם כיכר דיזנ", "amount": 689.45, "card": "2693", "month": "05", "category": "בית מרקחת / בריאות", "recurring": false, "details": ""}, {"id": 200558787, "date": "2026-04-17", "merchant": "קפה פיקולו", "amount": 11.0, "card": "2693", "month": "05", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 200559600, "date": "2026-04-16", "merchant": "BUHTAEM", "amount": 120.2, "card": "2693", "month": "05", "category": "קניות / בית / מתנות", "recurring": false, "details": "הנחה ₪2.45"}, {"id": 193183952, "date": "2026-04-16", "merchant": "GOSHOW", "amount": 20.0, "card": "2693", "month": "05", "category": "בידור", "recurring": false, "details": ""}, {"id": 193442968, "date": "2026-04-16", "merchant": "ג'וסה קולד פרס", "amount": 27.0, "card": "2693", "month": "05", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 192774775, "date": "2026-04-16", "merchant": "קפה פיקולו", "amount": 11.0, "card": "2693", "month": "05", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 191070274, "date": "2026-04-16", "merchant": "שופרסל אקספרס דראינו", "amount": 81.11, "card": "2693", "month": "05", "category": "מצרכים / סופר", "recurring": false, "details": ""}, {"id": 186926793, "date": "2026-04-15", "merchant": "ג'וסה קולד פרס", "amount": 54.0, "card": "2693", "month": "05", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 183574740, "date": "2026-04-15", "merchant": "דרורית רון בעמ", "amount": 150.0, "card": "2693", "month": "05", "category": "ספורט / כושר", "recurring": false, "details": ""}, {"id": 186928217, "date": "2026-04-15", "merchant": "משק לה בו שרי פרנסיז", "amount": 43.0, "card": "2693", "month": "05", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 179531307, "date": "2026-04-14", "merchant": "Clay by Dannah", "amount": 351.0, "card": "5753", "month": "05", "category": "קניות / בית / מתנות", "recurring": false, "details": ""}, {"id": 179895100, "date": "2026-04-14", "merchant": "אסתר rehtse", "amount": 17.0, "card": "2693", "month": "05", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 179900825, "date": "2026-04-14", "merchant": "סביח פרישמן", "amount": 60.0, "card": "2693", "month": "05", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 177988692, "date": "2026-04-14", "merchant": "סופר יודה אפליקציה", "amount": 52.8, "card": "5753", "month": "05", "category": "מצרכים / סופר", "recurring": false, "details": ""}, {"id": 176359121, "date": "2026-04-14", "merchant": "עיגול לטובה מגמה ירו", "amount": 12.71, "card": "5753", "month": "04", "category": "תרומות / צדקה", "recurring": true, "details": "הוראת קבע"}, {"id": 172426944, "date": "2026-04-13", "merchant": "GYMNASKILLZ", "amount": 268.0, "card": "2693", "month": "05", "category": "ספורט / כושר", "recurring": false, "details": ""}, {"id": 174749891, "date": "2026-04-13", "merchant": "אסתר rehtse", "amount": 17.0, "card": "2693", "month": "05", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 172252397, "date": "2026-04-13", "merchant": "סופר יודה אפליקציה", "amount": 123.33, "card": "5753", "month": "04", "category": "מצרכים / סופר", "recurring": false, "details": ""}, {"id": 172479576, "date": "2026-04-13", "merchant": "שלט לדלת - גרופי פינ", "amount": 164.3, "card": "5753", "month": "04", "category": "קניות / בית / מתנות", "recurring": false, "details": ""}, {"id": 166651506, "date": "2026-04-12", "merchant": "UPAPP", "amount": 55.0, "card": "5753", "month": "04", "category": "ספורט / כושר", "recurring": false, "details": ""}, {"id": 168802349, "date": "2026-04-12", "merchant": "אסתר rehtse", "amount": 52.0, "card": "2693", "month": "05", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 169419817, "date": "2026-04-12", "merchant": "מייזון קייזר", "amount": 29.0, "card": "2693", "month": "05", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 167320646, "date": "2026-04-12", "merchant": "סופר- פארם כיכר דיזנ", "amount": 58.8, "card": "2693", "month": "05", "category": "בית מרקחת / בריאות", "recurring": false, "details": ""}, {"id": 168802703, "date": "2026-04-12", "merchant": "קפה פיקולו", "amount": 11.0, "card": "2693", "month": "05", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 159380554, "date": "2026-04-11", "merchant": "סופר יודה אפליקציה", "amount": 23.3, "card": "5753", "month": "04", "category": "מצרכים / סופר", "recurring": false, "details": ""}, {"id": 160124558, "date": "2026-04-11", "merchant": "קיוסק קקל", "amount": 39.0, "card": "2693", "month": "05", "category": "מצרכים / סופר", "recurring": false, "details": ""}, {"id": 161791752, "date": "2026-04-10", "merchant": "אסתר rehtse", "amount": 17.0, "card": "2693", "month": "05", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 158782477, "date": "2026-04-10", "merchant": "סיבוס פלאקסי", "amount": 3.91, "card": "2693", "month": "05", "category": "דיגיטל / אפליקציות / מנויים", "recurring": false, "details": ""}, {"id": 161799128, "date": "2026-04-10", "merchant": "פירות וירקות מסריק", "amount": 87.74, "card": "2693", "month": "05", "category": "מצרכים / סופר", "recurring": false, "details": ""}, {"id": 151982317, "date": "2026-04-09", "merchant": "UPAPP", "amount": 25.0, "card": "5753", "month": "04", "category": "ספורט / כושר", "recurring": false, "details": ""}, {"id": 154890101, "date": "2026-04-09", "merchant": "אסתר rehtse", "amount": 17.0, "card": "2693", "month": "05", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 153052498, "date": "2026-04-09", "merchant": "בבקה בייקרי", "amount": 42.0, "card": "2693", "month": "05", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 155570506, "date": "2026-04-09", "merchant": "ג'וסה קולד פרס", "amount": 34.0, "card": "2693", "month": "05", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 151363492, "date": "2026-04-09", "merchant": "דרורית רון בעמ", "amount": 240.0, "card": "2693", "month": "05", "category": "ספורט / כושר", "recurring": false, "details": ""}, {"id": 149998793, "date": "2026-04-09", "merchant": "עיגול לטובה נשים במצ", "amount": 12.28, "card": "2693", "month": "04", "category": "תרומות / צדקה", "recurring": true, "details": "הוראת קבע"}, {"id": 147689107, "date": "2026-04-08", "merchant": "BOOK A FLIGHT", "amount": 1305.03, "card": "5753", "month": "04", "category": "נסיעות / טיולים", "recurring": false, "details": ""}, {"id": 147689106, "date": "2026-04-08", "merchant": "BOOK A FLIGHT", "amount": 1290.8, "card": "5753", "month": "04", "category": "נסיעות / טיולים", "recurring": false, "details": ""}, {"id": 146812128, "date": "2026-04-08", "merchant": "אסתר rehtse", "amount": 17.0, "card": "2693", "month": "04", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 145066143, "date": "2026-04-08", "merchant": "סופר יודה אפליקציה", "amount": 181.27, "card": "5753", "month": "04", "category": "מצרכים / סופר", "recurring": false, "details": ""}, {"id": 145102755, "date": "2026-04-07", "merchant": "UPAPP", "amount": 25.0, "card": "5753", "month": "04", "category": "ספורט / כושר", "recurring": false, "details": ""}, {"id": 146812137, "date": "2026-04-07", "merchant": "אסתר rehtse", "amount": 17.0, "card": "2693", "month": "04", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 145761815, "date": "2026-04-07", "merchant": "הוצאת עיתון הארץ-אינ", "amount": 49.0, "card": "2693", "month": "04", "category": "חדשות / מדיה", "recurring": true, "details": "הוראת קבע"}, {"id": 139501188, "date": "2026-04-06", "merchant": "CARREFOUR כיכר דיזנג", "amount": 237.81, "card": "2693", "month": "04", "category": "מצרכים / סופר", "recurring": false, "details": "הנחה ₪4.85"}, {"id": 139466440, "date": "2026-04-06", "merchant": "UPAPP", "amount": 25.0, "card": "5753", "month": "04", "category": "ספורט / כושר", "recurring": false, "details": ""}, {"id": 141346157, "date": "2026-04-06", "merchant": "אסתר rehtse", "amount": 17.0, "card": "2693", "month": "04", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 139429918, "date": "2026-04-06", "merchant": "סופר יודה אפליקציה", "amount": 10.1, "card": "5753", "month": "04", "category": "מצרכים / סופר", "recurring": false, "details": ""}, {"id": 135064851, "date": "2026-04-05", "merchant": "GETT", "amount": 47.04, "card": "5753", "month": "04", "category": "תחבורה / דלק / חניה", "recurring": false, "details": ""}, {"id": 136352211, "date": "2026-04-05", "merchant": "אסתר rehtse", "amount": 17.0, "card": "2693", "month": "04", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 136858632, "date": "2026-04-05", "merchant": "ג'וסה קולד פרס", "amount": 31.0, "card": "2693", "month": "04", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 132074033, "date": "2026-04-04", "merchant": "PAYBOX", "amount": 300.0, "card": "5753", "month": "04", "category": "העברות", "recurring": false, "details": ""}, {"id": 129366920, "date": "2026-04-04", "merchant": "קיוסק קקל", "amount": 12.0, "card": "2693", "month": "04", "category": "מצרכים / סופר", "recurring": false, "details": ""}, {"id": 128725273, "date": "2026-04-03", "merchant": "CARREFOUR כיכר דיזנג", "amount": 131.4, "card": "2693", "month": "04", "category": "מצרכים / סופר", "recurring": false, "details": "הנחה ₪2.68"}, {"id": 130609687, "date": "2026-04-03", "merchant": "הראל בריאות", "amount": 25.56, "card": "2693", "month": "04", "category": "בית מרקחת / בריאות", "recurring": true, "details": "הוראת קבע"}, {"id": 130883399, "date": "2026-04-03", "merchant": "קפה מסריק", "amount": 79.0, "card": "2693", "month": "04", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 122083858, "date": "2026-04-02", "merchant": "UPAPP", "amount": 25.0, "card": "5753", "month": "04", "category": "ספורט / כושר", "recurring": false, "details": ""}, {"id": 122455219, "date": "2026-04-02", "merchant": "בזק ENERGY בזק ג'ן))", "amount": 129.07, "card": "2693", "month": "04", "category": "תקשורת / אינטרנט", "recurring": true, "details": "הוראת קבע"}, {"id": 121780782, "date": "2026-04-02", "merchant": "בזק הוראת קבע", "amount": 229.89, "card": "2693", "month": "04", "category": "תקשורת / אינטרנט", "recurring": true, "details": "הוראת קבע"}, {"id": 122051030, "date": "2026-04-02", "merchant": "סופר יודה אפליקציה", "amount": 66.5, "card": "5753", "month": "04", "category": "מצרכים / סופר", "recurring": false, "details": ""}, {"id": 123743600, "date": "2026-04-01", "merchant": "iCount", "amount": 35.87, "card": "5753", "month": "04", "category": "דיגיטל / אפליקציות / מנויים", "recurring": false, "details": ""}, {"id": 124393419, "date": "2026-04-01", "merchant": "אוטו-תל", "amount": 10.0, "card": "5753", "month": "04", "category": "תחבורה / דלק / חניה", "recurring": true, "details": "הוראת קבע"}, {"id": 122199935, "date": "2026-04-01", "merchant": "נחת בכיכר", "amount": 64.0, "card": "2693", "month": "04", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 122199908, "date": "2026-04-01", "merchant": "נחת בכיכר", "amount": -18.0, "card": "2693", "month": "04", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 117791900, "date": "2026-03-31", "merchant": "אסתר rehtse", "amount": 17.0, "card": "2693", "month": "04", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 224378856, "date": "2026-03-31", "merchant": "דמי מועדון משקארד", "amount": 3.9, "card": "5753", "month": "05", "category": "עמלות בנק / אשראי", "recurring": false, "details": ""}, {"id": 115359143, "date": "2026-03-31", "merchant": "זומר בייקרי", "amount": 37.0, "card": "2693", "month": "04", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 117798616, "date": "2026-03-31", "merchant": "קייטון מסעדנות בעמ", "amount": 450.0, "card": "2693", "month": "04", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 111647761, "date": "2026-03-30", "merchant": "גוד בוי קפה", "amount": 14.0, "card": "2693", "month": "04", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 110044162, "date": "2026-03-30", "merchant": "עברית חנות ספרים  20", "amount": 28.13, "card": "2693", "month": "04", "category": "קניות / בית / מתנות", "recurring": false, "details": "הנחה ₪0.87"}, {"id": 104285261, "date": "2026-03-29", "merchant": "WOLT", "amount": 29.0, "card": "5753", "month": "04", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 99574060, "date": "2026-03-29", "merchant": "YES", "amount": 99.8, "card": "5753", "month": "04", "category": "דיגיטל / אפליקציות / מנויים", "recurring": true, "details": "הוראת קבע"}, {"id": 104057509, "date": "2026-03-29", "merchant": "אסתר rehtse", "amount": 17.0, "card": "2693", "month": "04", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 102474299, "date": "2026-03-29", "merchant": "הכוסית-ורמוטריה מקומ", "amount": 331.0, "card": "2693", "month": "04", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 96715293, "date": "2026-03-28", "merchant": "גרציאני", "amount": 47.0, "card": "2693", "month": "04", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 95236943, "date": "2026-03-28", "merchant": "סופר יודה אפליקציה", "amount": 57.8, "card": "5753", "month": "04", "category": "מצרכים / סופר", "recurring": false, "details": ""}, {"id": 97507086, "date": "2026-03-27", "merchant": "אלמה דיזינגוף", "amount": 28.3, "card": "2693", "month": "04", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 96710222, "date": "2026-03-27", "merchant": "אסתר rehtse", "amount": 17.0, "card": "2693", "month": "04", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 92723770, "date": "2026-03-27", "merchant": "טבע ספורט קסטל בע\"מ", "amount": 167.45, "card": "2693", "month": "04", "category": "ספורט / כושר", "recurring": false, "details": ""}, {"id": 97497073, "date": "2026-03-27", "merchant": "מייזון קייזר", "amount": 42.0, "card": "2693", "month": "04", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 92969601, "date": "2026-03-27", "merchant": "סופר יודה אפליקציה", "amount": 67.69, "card": "5753", "month": "04", "category": "מצרכים / סופר", "recurring": false, "details": ""}, {"id": 80489657, "date": "2026-03-26", "merchant": "GETT", "amount": 86.5, "card": "2693", "month": "04", "category": "תחבורה / דלק / חניה", "recurring": false, "details": ""}, {"id": 87043132, "date": "2026-03-26", "merchant": "UPAPP", "amount": 55.0, "card": "5753", "month": "04", "category": "ספורט / כושר", "recurring": false, "details": ""}, {"id": 90328358, "date": "2026-03-26", "merchant": "YANGO", "amount": 35.0, "card": "5753", "month": "04", "category": "תחבורה / דלק / חניה", "recurring": false, "details": ""}, {"id": 90328359, "date": "2026-03-26", "merchant": "YANGO", "amount": 27.4, "card": "5753", "month": "04", "category": "תחבורה / דלק / חניה", "recurring": false, "details": ""}, {"id": 90332046, "date": "2026-03-26", "merchant": "YANGO TAXI", "amount": 25.0, "card": "5753", "month": "04", "category": "עירייה / מיסים", "recurring": false, "details": ""}, {"id": 90318674, "date": "2026-03-26", "merchant": "אינהל אקסהל", "amount": 30.0, "card": "5753", "month": "04", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 90845211, "date": "2026-03-26", "merchant": "ג'וסה קולד פרס", "amount": 60.0, "card": "2693", "month": "04", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 90850118, "date": "2026-03-26", "merchant": "הקערה חנות פרחים", "amount": 90.0, "card": "2693", "month": "04", "category": "קניות / בית / מתנות", "recurring": false, "details": ""}, {"id": 87169408, "date": "2026-03-26", "merchant": "מי אביבים הוראת קבע", "amount": 166.42, "card": "5753", "month": "04", "category": "תשתיות (מים/חשמל)", "recurring": true, "details": "הוראת קבע"}, {"id": 87011281, "date": "2026-03-26", "merchant": "סופר יודה אפליקציה", "amount": 27.8, "card": "5753", "month": "04", "category": "מצרכים / סופר", "recurring": false, "details": ""}, {"id": 83977741, "date": "2026-03-26", "merchant": "עיריית ת\"א -יפו ארנו", "amount": 589.4, "card": "2693", "month": "04", "category": "עירייה / מיסים", "recurring": true, "details": "הוראת קבע"}, {"id": 90078318, "date": "2026-03-26", "merchant": "קפה פיקולו", "amount": 11.0, "card": "2693", "month": "04", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 82042962, "date": "2026-03-25", "merchant": "mela", "amount": 52.0, "card": "2693", "month": "04", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 82582427, "date": "2026-03-25", "merchant": "ג'וסה קולד פרס", "amount": 30.0, "card": "2693", "month": "04", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 81002680, "date": "2026-03-25", "merchant": "מ.התחבורה-פנגו מוביט", "amount": 50.0, "card": "2693", "month": "04", "category": "תחבורה / דלק / חניה", "recurring": true, "details": "הוראת קבע"}, {"id": 79888553, "date": "2026-03-25", "merchant": "סופר יודה אפליקציה", "amount": 123.88, "card": "5753", "month": "04", "category": "מצרכים / סופר", "recurring": false, "details": ""}, {"id": 71243676, "date": "2026-03-24", "merchant": "אוטו-תל", "amount": 28.0, "card": "5753", "month": "04", "category": "תחבורה / דלק / חניה", "recurring": true, "details": "הוראת קבע"}, {"id": 71030594, "date": "2026-03-24", "merchant": "אסתר rehtse", "amount": 17.0, "card": "2693", "month": "04", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 71236869, "date": "2026-03-24", "merchant": "מנורה מבטחים-חיים/בר", "amount": 1220.93, "card": "5753", "month": "04", "category": "ביטוח / פנסיה", "recurring": true, "details": "הוראת קבע"}, {"id": 64063484, "date": "2026-03-23", "merchant": "הקוסם", "amount": 67.0, "card": "2693", "month": "04", "category": "בידור", "recurring": false, "details": ""}, {"id": 62425214, "date": "2026-03-23", "merchant": "סופר יודה אפליקציה", "amount": 45.78, "card": "5753", "month": "04", "category": "מצרכים / סופר", "recurring": false, "details": ""}, {"id": 58624661, "date": "2026-03-22", "merchant": "אסתר rehtse", "amount": 17.0, "card": "2693", "month": "04", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 58809786, "date": "2026-03-22", "merchant": "אתא החדשה", "amount": 470.0, "card": "5753", "month": "04", "category": "קניות / בית / מתנות", "recurring": false, "details": ""}, {"id": 59125612, "date": "2026-03-22", "merchant": "ג'וסה קולד פרס", "amount": 27.0, "card": "2693", "month": "04", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 73690037, "date": "2026-03-22", "merchant": "דמי כרטיס /הנפקה", "amount": 15.3, "card": "2693", "month": "04", "category": "עמלות בנק / אשראי", "recurring": false, "details": ""}, {"id": 56326103, "date": "2026-03-22", "merchant": "דרורית רון בעמ", "amount": 180.0, "card": "2693", "month": "04", "category": "ספורט / כושר", "recurring": false, "details": ""}, {"id": 76457277, "date": "2026-03-22", "merchant": "פועלים- דמי כרטיס", "amount": 0.0, "card": "5753", "month": "04", "category": "עמלות בנק / אשראי", "recurring": false, "details": "הנחה ₪17.22"}, {"id": 50432030, "date": "2026-03-21", "merchant": "HOT MOBILE", "amount": 52.9, "card": "2693", "month": "04", "category": "תקשורת / אינטרנט", "recurring": true, "details": "הוראת קבע"}, {"id": 53049612, "date": "2026-03-21", "merchant": "אסתר rehtse", "amount": 17.0, "card": "2693", "month": "04", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 51253919, "date": "2026-03-20", "merchant": "זומר בייקרי", "amount": 50.0, "card": "2693", "month": "04", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 51026798, "date": "2026-03-20", "merchant": "סופר יודה אפליקציה", "amount": 107.54, "card": "5753", "month": "04", "category": "מצרכים / סופר", "recurring": false, "details": ""}, {"id": 53045797, "date": "2026-03-20", "merchant": "קפה לנדוור", "amount": 28.0, "card": "2693", "month": "04", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 44471119, "date": "2026-03-19", "merchant": "CARREFOUR כיכר דיזנג", "amount": 78.5, "card": "2693", "month": "04", "category": "מצרכים / סופר", "recurring": false, "details": ""}, {"id": 44437964, "date": "2026-03-19", "merchant": "UPAPP", "amount": 55.0, "card": "5753", "month": "04", "category": "ספורט / כושר", "recurring": false, "details": ""}, {"id": 47136092, "date": "2026-03-19", "merchant": "WOLT", "amount": 100.8, "card": "5753", "month": "04", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 47539477, "date": "2026-03-19", "merchant": "ג'וסה קולד פרס", "amount": 56.0, "card": "2693", "month": "04", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 44991857, "date": "2026-03-19", "merchant": "סופר- פארם כיכר דיזנ", "amount": 561.75, "card": "2693", "month": "04", "category": "בית מרקחת / בריאות", "recurring": false, "details": ""}, {"id": 44991856, "date": "2026-03-19", "merchant": "סופר- פארם כיכר דיזנ", "amount": 82.7, "card": "2693", "month": "04", "category": "בית מרקחת / בריאות", "recurring": false, "details": ""}, {"id": 40226701, "date": "2026-03-18", "merchant": "6 במאי", "amount": 44.0, "card": "5753", "month": "04", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 36181891, "date": "2026-03-18", "merchant": "PAYBOX", "amount": 30.0, "card": "5753", "month": "04", "category": "העברות", "recurring": false, "details": ""}, {"id": 40563682, "date": "2026-03-18", "merchant": "אסתר rehtse", "amount": 17.0, "card": "2693", "month": "04", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 38912280, "date": "2026-03-18", "merchant": "ביי-מי שוברי מתנה", "amount": 250.0, "card": "2693", "month": "04", "category": "קניות / בית / מתנות", "recurring": false, "details": ""}, {"id": 41088932, "date": "2026-03-18", "merchant": "ג'וסה קולד פרס", "amount": 33.0, "card": "2693", "month": "04", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 38673843, "date": "2026-03-18", "merchant": "סופר יודה אפליקציה", "amount": 35.84, "card": "5753", "month": "04", "category": "מצרכים / סופר", "recurring": false, "details": ""}, {"id": 34992587, "date": "2026-03-17", "merchant": "6 במאי", "amount": 56.0, "card": "5753", "month": "04", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 33119338, "date": "2026-03-17", "merchant": "בזק בינלאומי בע\"מ", "amount": 8.91, "card": "5753", "month": "04", "category": "תקשורת / אינטרנט", "recurring": true, "details": "הוראת קבע"}, {"id": 35849709, "date": "2026-03-17", "merchant": "בייקרי צינה דיזנגוף", "amount": 14.0, "card": "2693", "month": "04", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 28369368, "date": "2026-03-16", "merchant": "UPAPP", "amount": 55.0, "card": "5753", "month": "04", "category": "ספורט / כושר", "recurring": false, "details": ""}, {"id": 29520909, "date": "2026-03-16", "merchant": "אם בי בורגר דיזינגוף", "amount": 98.0, "card": "5753", "month": "04", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 29876630, "date": "2026-03-16", "merchant": "מנטור ברבר שופ", "amount": 120.0, "card": "5753", "month": "04", "category": "רפואי / מטפלים", "recurring": false, "details": ""}, {"id": 23373131, "date": "2026-03-15", "merchant": "UPAPP", "amount": 25.0, "card": "5753", "month": "04", "category": "ספורט / כושר", "recurring": false, "details": ""}, {"id": 24627584, "date": "2026-03-15", "merchant": "אסתר rehtse", "amount": 17.0, "card": "2693", "month": "04", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 25133642, "date": "2026-03-15", "merchant": "ג'ונגל דיזינגוף", "amount": 21.9, "card": "2693", "month": "04", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 22916579, "date": "2026-03-15", "merchant": "דרורית רון בעמ", "amount": 140.0, "card": "2693", "month": "04", "category": "ספורט / כושר", "recurring": false, "details": ""}, {"id": 23347198, "date": "2026-03-15", "merchant": "סופר יודה אפליקציה", "amount": 118.8, "card": "5753", "month": "04", "category": "מצרכים / סופר", "recurring": false, "details": ""}, {"id": 23739799, "date": "2026-03-15", "merchant": "שייק פרי 9", "amount": 54.0, "card": "2693", "month": "04", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 19251613, "date": "2026-03-14", "merchant": "אסתר rehtse", "amount": 75.0, "card": "2693", "month": "04", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 17014293, "date": "2026-03-13", "merchant": "UPAPP", "amount": 25.0, "card": "5753", "month": "04", "category": "ספורט / כושר", "recurring": false, "details": ""}, {"id": 19251605, "date": "2026-03-13", "merchant": "אסתר rehtse", "amount": 17.0, "card": "2693", "month": "04", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 13492755, "date": "2026-03-12", "merchant": "אסתר rehtse", "amount": 17.0, "card": "2693", "month": "04", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 14067138, "date": "2026-03-12", "merchant": "גוד בוי קפה", "amount": 14.0, "card": "2693", "month": "04", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 10401399, "date": "2026-03-12", "merchant": "נעמת", "amount": 35.0, "card": "5753", "month": "04", "category": "תרומות / צדקה", "recurring": false, "details": "תשלום 2 מתוך 12"}, {"id": 10401400, "date": "2026-03-12", "merchant": "נעמת", "amount": 35.0, "card": "5753", "month": "05", "category": "תרומות / צדקה", "recurring": false, "details": "תשלום 3 מתוך 12"}, {"id": 10401401, "date": "2026-03-12", "merchant": "נעמת", "amount": 35.0, "card": "5753", "month": "06", "category": "תרומות / צדקה", "recurring": false, "details": "תשלום 4 מתוך 12"}, {"id": 5648735, "date": "2026-03-11", "merchant": "CARREFOUR כיכר דיזנג", "amount": 90.48, "card": "2693", "month": "04", "category": "מצרכים / סופר", "recurring": false, "details": ""}, {"id": 5331413, "date": "2026-03-11", "merchant": "סיבוס פלאקסי", "amount": 43.5, "card": "2693", "month": "04", "category": "דיגיטל / אפליקציות / מנויים", "recurring": false, "details": ""}, {"id": 2729652, "date": "2026-03-10", "merchant": "ג'וסה קולד פרס", "amount": 29.0, "card": "2693", "month": "04", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 996398278, "date": "2026-03-09", "merchant": "גוד בוי קפה", "amount": 14.0, "card": "2693", "month": "04", "category": "בתי קפה / מסעדות / מאפיות", "recurring": false, "details": ""}, {"id": 61503481, "date": "2026-02-28", "merchant": "דמי מועדון משקארד", "amount": 3.9, "card": "5753", "month": "04", "category": "עמלות בנק / אשראי", "recurring": false, "details": ""}, {"id": 901897264, "date": "2026-02-19", "merchant": "ד\"ר טלי אברהם", "amount": 465.0, "card": "5753", "month": "04", "category": "רפואי / מטפלים", "recurring": false, "details": "תשלום 2 מתוך 4"}, {"id": 901897265, "date": "2026-02-19", "merchant": "ד\"ר טלי אברהם", "amount": 465.0, "card": "5753", "month": "05", "category": "רפואי / מטפלים", "recurring": false, "details": "תשלום 3 מתוך 4"}, {"id": 901897266, "date": "2026-02-19", "merchant": "ד\"ר טלי אברהם", "amount": 465.0, "card": "5753", "month": "06", "category": "רפואי / מטפלים", "recurring": false, "details": "תשלום 4 מתוך 4 / תשלום אחרון"}, {"id": 662725908, "date": "2026-01-07", "merchant": "HIS IS NOT  AN ULPAN", "amount": 607.0, "card": "5753", "month": "04", "category": "חינוך / קורסים", "recurring": false, "details": "תשלום 4 מתוך 4 / תשלום אחרון"}], "categories": ["אופטיקה / משקפיים", "בידור", "ביטוח / פנסיה", "בית מרקחת / בריאות", "בתי קפה / מסעדות / מאפיות", "דיגיטל / אפליקציות / מנויים", "העברות", "חדשות / מדיה", "חינוך / קורסים", "טיפוח", "מנויים / הוראות קבע", "מצרכים / סופר", "נסיעות / טיולים", "ספורט / כושר", "עירייה / מיסים", "עמלות בנק / אשראי", "קניות / בית / מתנות", "רפואי / מטפלים", "תחבורה / דלק / חניה", "תקשורת / אינטרנט", "תרומות / צדקה", "תשתיות (מים/חשמל)"], "non_card_categories": [{"name": "פנסיה (הראל)", "monthly": 2000.0, "total_3mo": 6000.0, "count": 6}, {"name": "ביטוח חיים (מגדל)", "monthly": 1121.31, "total_3mo": 3363.94, "count": 3}, {"name": "מזומן", "monthly": 733.33, "total_3mo": 2200.0, "count": 3}, {"name": "קופת חולים (מכבי)", "monthly": 448.89, "total_3mo": 1346.67, "count": 3}, {"name": "הוראות קבע (אחר)", "monthly": 321.0, "total_3mo": 963.0, "count": 3}, {"name": "העברות אישיות", "monthly": 166.67, "total_3mo": 500.0, "count": 1}, {"name": "עמלות בנק", "monthly": 57.92, "total_3mo": 173.75, "count": 7}], "salary_avg": 25951.76, "salary_history": [{"month": "פברואר 2026 (חלקי)", "amount": 18611.8}, {"month": "מרץ 2026", "amount": 25061.86}, {"month": "אפריל 2026", "amount": 26841.67}], "other_income": [{"name": "ריבית מפיקדון", "monthly_avg": 118.37666666666667, "note": "ריבית מהפיקדון בבנק"}, {"name": "דיבידנדים", "monthly_avg": 0.37666666666666665, "note": "ני\"ע"}]};
+const ORIGINAL = JSON.parse(JSON.stringify(DATA.transactions));
+let txs = DATA.transactions;
+let categories = DATA.categories.slice();
+let nonCardCats = DATA.non_card_categories; // fixed, from bank
+const baseSalary = DATA.salary_avg;
+
+let selected = new Set();
+let sortBy = 'date';
+let sortDir = 'desc';
+let excludedCategories = new Set();
+let editingCategory = null;
+let adjustments = {}; // key: cat name → {mode:'pct'|'fixed', value:number}
+let hypoIncome = baseSalary;
+
+// ===== Tabs =====
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.toggle('active', c.id === 'tab-' + tab));
+  if (tab === 'budget') renderBudget();
+}
+
+// ===== Helpers =====
+function fmt(n) { return '₪' + Math.round(n).toLocaleString('en-US'); }
+function fmt2(n) { return '₪' + n.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+function escapeHtml(s) {
+  if (s == null) return '';
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function escapeAttr(s) { return String(s||'').replace(/"/g, '&quot;'); }
+function monthName(m) { return {'04':'אפריל','05':'מאי','06':'יוני'}[m]||m; }
+
+// ===== Derived: CC category totals from current transactions =====
+function ccCategoryTotals() {
+  const totals = {};
+  for (const t of txs) {
+    if (!totals[t.category]) totals[t.category] = { name: t.category, total_3mo: 0, count: 0 };
+    totals[t.category].total_3mo += t.amount;
+    totals[t.category].count += 1;
+  }
+  return Object.values(totals).map(c => ({...c, monthly: c.total_3mo / 3, type:'אשראי'}));
+}
+
+function allBudgetCategories() {
+  const cc = ccCategoryTotals();
+  const nc = nonCardCats.map(c => ({...c, type:'בנק (לא אשראי)'}));
+  return [...cc, ...nc].sort((a,b) => b.monthly - a.monthly);
+}
+
+function ensureAdjustment(name) {
+  if (!adjustments[name]) adjustments[name] = { mode:'pct', value: 100 };
+}
+
+function adjustedAmount(cat) {
+  ensureAdjustment(cat.name);
+  const adj = adjustments[cat.name];
+  if (adj.mode === 'fixed') return adj.value;
+  return cat.monthly * adj.value / 100;
+}
+
+// ===== Editor: filters, render, etc =====
+function buildCategoryOptions() {
+  const filterSel = document.getElementById('filter-category');
+  const bulkSel = document.getElementById('bulkCategory');
+  const excludeSel = document.getElementById('exclude-add');
+  const curFilter = filterSel.value;
+  const curBulk = bulkSel.value;
+  filterSel.innerHTML = '<option value="">כל הקטגוריות</option>';
+  bulkSel.innerHTML = '';
+  excludeSel.innerHTML = '<option value="">— סנן החוצה קטגוריה —</option>';
+  for (const cat of categories) {
+    filterSel.innerHTML += `<option value="${escapeAttr(cat)}">${escapeHtml(cat)}</option>`;
+    bulkSel.innerHTML += `<option value="${escapeAttr(cat)}">${escapeHtml(cat)}</option>`;
+    if (!excludedCategories.has(cat)) {
+      excludeSel.innerHTML += `<option value="${escapeAttr(cat)}">${escapeHtml(cat)}</option>`;
+    }
+  }
+  if (categories.includes(curFilter)) filterSel.value = curFilter;
+  if (categories.includes(curBulk)) bulkSel.value = curBulk;
+}
+
+function getFilters() {
+  return {
+    q: document.getElementById('search').value.toLowerCase().trim(),
+    cat: document.getElementById('filter-category').value,
+    month: document.getElementById('filter-month').value,
+    card: document.getElementById('filter-card').value,
+  };
+}
+
+function matches(tx, f) {
+  if (f.q && !(tx.merchant.toLowerCase().includes(f.q) || (tx.details||'').toLowerCase().includes(f.q))) return false;
+  if (f.cat && tx.category !== f.cat) return false;
+  if (f.month && tx.month !== f.month) return false;
+  if (f.card && tx.card !== f.card) return false;
+  if (excludedCategories.has(tx.category)) return false;
+  return true;
+}
+
+function getFiltered() {
+  const f = getFilters();
+  let rows = txs.filter(t => matches(t, f));
+  rows.sort((a,b) => {
+    let av = a[sortBy], bv = b[sortBy];
+    if (typeof av === 'number') return sortDir==='asc' ? av-bv : bv-av;
+    av = String(av||''); bv = String(bv||'');
+    return sortDir==='asc' ? av.localeCompare(bv,'he') : bv.localeCompare(av,'he');
+  });
+  return rows;
+}
+
+function renderEditor() {
+  const rows = getFiltered();
+  const tbody = document.getElementById('tbody');
+  let html = '';
+  for (const tx of rows) {
+    const origCat = ORIGINAL.find(o => o.id === tx.id)?.category;
+    const changed = origCat !== tx.category;
+    const isSel = selected.has(tx.id);
+    let opts = '';
+    for (const c of categories) {
+      opts += `<option value="${escapeAttr(c)}"${c===tx.category?' selected':''}>${escapeHtml(c)}</option>`;
+    }
+    const recBadge = tx.recurring ? '<span class="rec-badge">הוראת קבע</span>' : '';
+    html += `<tr data-id="${tx.id}" class="${changed?'changed':''} ${isSel?'selected':''}">
+      <td class="checkbox-col"><input type="checkbox" ${isSel?'checked':''} onclick="toggleSelect(${tx.id}, this.checked)" /></td>
+      <td>${tx.date}</td>
+      <td class="merchant" title="${escapeHtml(tx.merchant)}"><span class="merchant-name">${escapeHtml(tx.merchant)}</span>${recBadge}</td>
+      <td class="amount">${fmt2(tx.amount)}</td>
+      <td><span class="card-pill">${tx.card}</span></td>
+      <td><span class="month-pill month-${tx.month}">${monthName(tx.month)}</span></td>
+      <td class="category-cell"><select class="${changed?'modified':''}" onchange="changeCategory(${tx.id}, this.value)">${opts}</select></td>
+      <td class="details" title="${escapeHtml(tx.details||'')}">${escapeHtml(tx.details||'')}</td>
+    </tr>`;
+  }
+  tbody.innerHTML = html;
+  updateStats(rows);
+  updateBulkBar();
+  updateExcludeBar();
+}
+
+function updateStats(rows) {
+  const total = rows.reduce((s,t)=>s+t.amount, 0);
+  const changedCount = txs.filter(t => ORIGINAL.find(o=>o.id===t.id)?.category !== t.category).length;
+  document.getElementById('stats').innerHTML =
+    `<b>${rows.length}</b> עסקאות מוצגות · סך <b>${fmt2(total)}</b> · <b>${changedCount}</b> שינויים`;
+  const byCat = {};
+  for (const t of rows) byCat[t.category] = (byCat[t.category] || 0) + t.amount;
+  const entries = Object.entries(byCat).sort((a,b)=>b[1]-a[1]);
+  const grid = document.getElementById('summaryGrid');
+  if (entries.length === 0) { grid.innerHTML = '<div class="summary-cell"><div class="value">אין עסקאות</div></div>'; return; }
+  grid.innerHTML = entries.slice(0,8).map(([c,v]) =>
+    `<div class="summary-cell"><div class="label">${escapeHtml(c)}</div><div class="value">${fmt2(v)}</div></div>`
+  ).join('');
+}
+
+function changeCategory(id, newCat) {
+  const tx = txs.find(t => t.id === id);
+  if (!tx) return;
+  tx.category = newCat;
+  renderEditor();
+  // Sync budget tab
+  renderBudgetIfActive();
+}
+
+function toggleSelect(id, checked) {
+  if (checked) selected.add(id); else selected.delete(id);
+  updateBulkBar();
+  const row = document.querySelector(`tr[data-id="${id}"]`);
+  if (row) row.classList.toggle('selected', checked);
+}
+
+function toggleSelectAll(cb) {
+  const rows = getFiltered();
+  for (const t of rows) {
+    if (cb.checked) selected.add(t.id); else selected.delete(t.id);
+  }
+  renderEditor();
+}
+
+function updateBulkBar() {
+  const bar = document.getElementById('bulkBar');
+  const count = selected.size;
+  if (count > 0) bar.classList.add('show'); else bar.classList.remove('show');
+  document.getElementById('bulkCount').textContent = count;
+}
+
+function applyBulk() {
+  const cat = document.getElementById('bulkCategory').value;
+  if (!cat) return;
+  for (const id of selected) {
+    const tx = txs.find(t => t.id === id);
+    if (tx) tx.category = cat;
+  }
+  selected.clear();
+  renderEditor();
+  renderBudgetIfActive();
+}
+
+function clearSelection() { selected.clear(); renderEditor(); }
+
+function resetFilters() {
+  document.getElementById('search').value = '';
+  document.getElementById('filter-category').value = '';
+  document.getElementById('filter-month').value = '';
+  document.getElementById('filter-card').value = '';
+  excludedCategories.clear();
+  buildCategoryOptions();
+  renderEditor();
+}
+
+document.getElementById('exclude-add').addEventListener('change', e => {
+  const cat = e.target.value;
+  if (cat) {
+    excludedCategories.add(cat);
+    e.target.value = '';
+    buildCategoryOptions();
+    renderEditor();
+  }
+});
+
+function removeExclude(cat) { excludedCategories.delete(cat); buildCategoryOptions(); renderEditor(); }
+function clearExcludes() { excludedCategories.clear(); buildCategoryOptions(); renderEditor(); }
+
+function updateExcludeBar() {
+  const bar = document.getElementById('excludeBar');
+  const chips = document.getElementById('excludeChips');
+  if (excludedCategories.size === 0) { bar.classList.remove('show'); return; }
+  bar.classList.add('show');
+  chips.innerHTML = Array.from(excludedCategories).map(c =>
+    `<span class="chip" onclick="removeExclude('${escapeAttr(c)}')">${escapeHtml(c)}</span>`
+  ).join('');
+}
+
+// ===== Category Manager =====
+function openCategoryManager() {
+  editingCategory = null;
+  document.getElementById('catModal').classList.add('show');
+  renderCategoryList();
+  setTimeout(() => document.getElementById('newCatInput').focus(), 50);
+}
+
+function closeCategoryManager() {
+  document.getElementById('catModal').classList.remove('show');
+  editingCategory = null;
+}
+
+function renderCategoryList() {
+  const list = document.getElementById('catList');
+  const usage = {};
+  for (const t of txs) usage[t.category] = (usage[t.category]||0) + 1;
+  let html = '';
+  for (const cat of categories) {
+    const count = usage[cat] || 0;
+    if (editingCategory === cat) {
+      html += `<li class="edit-row">
+        <input id="editInput" type="text" value="${escapeAttr(cat)}" onkeydown="if(event.key==='Enter') saveEdit('${escapeAttr(cat)}'); if(event.key==='Escape') cancelEdit();" />
+        <button class="save" onclick="saveEdit('${escapeAttr(cat)}')">שמור</button>
+        <button class="cancel" onclick="cancelEdit()">ביטול</button>
+      </li>`;
+    } else {
+      html += `<li class="${count>0?'in-use':''}">
+        <span class="name">${escapeHtml(cat)}</span>
+        <span class="count">${count>0 ? count + ' עסקאות' : 'לא בשימוש'}</span>
+        <button onclick="startEdit('${escapeAttr(cat)}')">שנה שם</button>
+        <button class="danger" ${count>0?'disabled title="לא ניתן למחוק קטגוריה שבשימוש"':''} onclick="deleteCategory('${escapeAttr(cat)}')">מחק</button>
+      </li>`;
+    }
+  }
+  list.innerHTML = html;
+  if (editingCategory) {
+    setTimeout(() => { const inp = document.getElementById('editInput'); if (inp) { inp.focus(); inp.select(); } }, 30);
+  }
+}
+
+function addCategory() {
+  const input = document.getElementById('newCatInput');
+  const name = input.value.trim();
+  if (!name) return;
+  if (categories.includes(name)) { alert('הקטגוריה "' + name + '" כבר קיימת.'); return; }
+  categories.push(name);
+  categories.sort((a,b) => a.localeCompare(b,'he'));
+  input.value = '';
+  buildCategoryOptions();
+  renderCategoryList();
+  renderEditor();
+  renderBudgetIfActive();
+}
+
+function startEdit(cat) { editingCategory = cat; renderCategoryList(); }
+function cancelEdit() { editingCategory = null; renderCategoryList(); }
+
+function saveEdit(oldName) {
+  const inp = document.getElementById('editInput');
+  if (!inp) return;
+  const newName = inp.value.trim();
+  if (!newName) { alert('שם הקטגוריה לא יכול להיות ריק.'); return; }
+  if (newName === oldName) { editingCategory = null; renderCategoryList(); return; }
+  if (categories.includes(newName)) {
+    if (!confirm('הקטגוריה "' + newName + '" כבר קיימת. למזג ' + txs.filter(t=>t.category===oldName).length + ' עסקאות לתוכה?')) return;
+    for (const t of txs) if (t.category === oldName) t.category = newName;
+    categories = categories.filter(c => c !== oldName);
+  } else {
+    for (const t of txs) if (t.category === oldName) t.category = newName;
+    const i = categories.indexOf(oldName);
+    if (i >= 0) categories[i] = newName;
+    categories.sort((a,b) => a.localeCompare(b,'he'));
+  }
+  if (excludedCategories.has(oldName)) { excludedCategories.delete(oldName); excludedCategories.add(newName); }
+  if (adjustments[oldName]) { adjustments[newName] = adjustments[oldName]; delete adjustments[oldName]; }
+  editingCategory = null;
+  buildCategoryOptions();
+  renderCategoryList();
+  renderEditor();
+  renderBudgetIfActive();
+}
+
+function deleteCategory(cat) {
+  if (!confirm('למחוק את הקטגוריה "' + cat + '"?')) return;
+  categories = categories.filter(c => c !== cat);
+  excludedCategories.delete(cat);
+  delete adjustments[cat];
+  buildCategoryOptions();
+  renderCategoryList();
+  renderEditor();
+  renderBudgetIfActive();
+}
+
+// ===== Downloads (editor) =====
+function downloadCSV() { csvDownload(txs, 'categories_revised_he.csv'); }
+function downloadChangesOnly() {
+  const changed = txs.filter(t => ORIGINAL.find(o=>o.id===t.id)?.category !== t.category)
+    .map(t => ({ ...t, original_category: ORIGINAL.find(o=>o.id===t.id).category }));
+  if (changed.length === 0) { alert('אין שינויים עדיין.'); return; }
+  csvDownload(changed, 'category_changes_only_he.csv', true);
+}
+
+function csvDownload(rows, name, includeOriginal=false) {
+  const headerMap = {
+    date: 'תאריך', merchant: 'בית עסק', amount: 'סכום', card: 'כרטיס',
+    month: 'חודש', category: 'קטגוריה', original_category: 'קטגוריה מקורית',
+    recurring: 'הוראת קבע', details: 'פרטים', id: 'מזהה'
+  };
+  const keys = ['date','merchant','amount','card','month','category', includeOriginal?'original_category':null, 'recurring','details','id'].filter(Boolean);
+  const escape = s => {
+    s = String(s == null ? '' : s);
+    if (/[",\n]/.test(s)) return '"' + s.replace(/"/g,'""') + '"';
+    return s;
+  };
+  const lines = [keys.map(k => escape(headerMap[k])).join(',')];
+  for (const r of rows) lines.push(keys.map(k => escape(r[k])).join(','));
+  const blob = new Blob(['\ufeff' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+
+// ===== Budget Tab =====
+function renderBudgetIfActive() {
+  if (document.getElementById('tab-budget').classList.contains('active')) renderBudget();
+}
+
+function renderBudget() {
+  renderIncomeHistory();
+  renderTopStats();
+  renderCurrentState();
+  renderCatControls();
+  renderHypothetical();
+  renderCatTable();
+}
+
+function renderIncomeHistory() {
+  document.getElementById('incomeHistory').innerHTML =
+    DATA.salary_history.map(s =>
+      `<tr><td>${escapeHtml(s.month)}</td><td class="num">${fmt2(s.amount)}</td></tr>`
+    ).join('') + `<tr class="total"><td>ממוצע (מרץ + אפריל)</td><td class="num">${fmt2(baseSalary)}</td></tr>`;
+  document.getElementById('otherIncomeList').innerHTML =
+    DATA.other_income.map(o =>
+      `<tr><td>${escapeHtml(o.name)}<div class="note">${escapeHtml(o.note)}</div></td><td class="num">${fmt2(o.monthly_avg)}/חודש</td></tr>`
+    ).join('');
+}
+
+function renderTopStats() {
+  const cc = ccCategoryTotals();
+  const ccMonthly = cc.reduce((s,c)=>s+c.monthly, 0);
+  const ncMonthly = nonCardCats.reduce((s,c)=>s+c.monthly, 0);
+  document.getElementById('ccTotal').textContent = fmt(ccMonthly);
+  document.getElementById('ncTotal').textContent = fmt(ncMonthly);
+  document.getElementById('allTotal').textContent = fmt(ccMonthly + ncMonthly);
+}
+
+function totalCurrentMonthly() {
+  return allBudgetCategories().reduce((s,c) => s + c.monthly, 0);
+}
+function totalNewMonthly() {
+  return allBudgetCategories().reduce((s,c) => s + adjustedAmount(c), 0);
+}
+
+function renderCurrentState() {
+  const income = baseSalary;
+  const expense = totalCurrentMonthly();
+  const balance = income - expense;
+  document.getElementById('curIncome').textContent = fmt(income);
+  document.getElementById('curExpense').textContent = fmt(expense);
+  const balanceEl = document.getElementById('curBalance');
+  const balanceBox = document.getElementById('curBalanceBox');
+  balanceEl.textContent = fmt(balance) + ' (' + (balance/income*100).toFixed(1) + '%)';
+  if (balance >= 0) { balanceEl.style.color = '#059669'; balanceBox.style.background = '#ECFDF5'; }
+  else { balanceEl.style.color = '#DC2626'; balanceBox.style.background = '#FEF2F2'; }
+  renderBar('curBar', 'curLegend', income, expense);
+}
+
+function renderBar(barId, legendId, income, expense) {
+  const bar = document.getElementById(barId);
+  const legend = document.getElementById(legendId);
+  if (income <= 0) { bar.innerHTML = ''; legend.innerHTML = ''; return; }
+  const expensePct = Math.min(100, expense / income * 100);
+  const savePct = Math.max(0, 100 - expensePct);
+  bar.innerHTML = `
+    <div class="bar-segment bar-expense" style="width:${expensePct}%">${expensePct >= 10 ? expensePct.toFixed(0) + '% הוצאות' : ''}</div>
+    <div class="bar-segment bar-savings" style="width:${savePct}%">${savePct >= 8 ? savePct.toFixed(0) + '% חיסכון' : ''}</div>
+  `;
+  legend.innerHTML = `
+    <div class="legend-item"><div class="legend-dot" style="background:#DC2626"></div>הוצאות: ${fmt(expense)}</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#059669"></div>חיסכון: ${fmt(income-expense)}</div>
+  `;
+}
+
+function renderCatControls() {
+  const container = document.getElementById('catControls');
+  const cats = allBudgetCategories();
+  let html = '';
+  for (const c of cats) {
+    ensureAdjustment(c.name);
+    const adj = adjustments[c.name];
+    const isModified = !(adj.mode === 'pct' && adj.value === 100);
+    const newAmt = adjustedAmount(c);
+    html += `
+      <div class="control-row">
+        <div class="cat-name">${escapeHtml(c.name)}<div style="font-size:11px;color:#9ca3af;">${escapeHtml(c.type)}</div></div>
+        <span class="baseline">בסיס: ${fmt(c.monthly)}</span>
+        <input type="range" min="0" max="200" step="5" value="${adj.mode==='pct'?adj.value:100}" oninput="changePct('${encodeURIComponent(c.name)}', this.value, this)" />
+        <span class="pct" id="pct-${encodeURIComponent(c.name)}">${adj.mode==='pct' ? adj.value+'%' : '—'}</span>
+        <input type="number" min="0" step="50" value="${Math.round(newAmt)}" class="${isModified?'modified':''}" oninput="changeFixed('${encodeURIComponent(c.name)}', this.value)" />
+      </div>
+    `;
+  }
+  container.innerHTML = html;
+}
+
+function changePct(encodedName, val, slider) {
+  const name = decodeURIComponent(encodedName);
+  adjustments[name] = { mode: 'pct', value: Number(val) };
+  document.getElementById('pct-' + encodedName).textContent = val + '%';
+  const cats = allBudgetCategories();
+  const cat = cats.find(c => c.name === name);
+  if (cat) {
+    const row = slider.closest('.control-row');
+    const numInput = row.querySelector('input[type="number"]');
+    numInput.value = Math.round(cat.monthly * val / 100);
+    numInput.classList.toggle('modified', Number(val) !== 100);
+  }
+  renderHypothetical();
+  renderCatTable();
+}
+
+function changeFixed(encodedName, val) {
+  const name = decodeURIComponent(encodedName);
+  adjustments[name] = { mode: 'fixed', value: Number(val) };
+  renderCatControls();
+  renderHypothetical();
+  renderCatTable();
+}
+
+function setIncome(v) {
+  hypoIncome = Number(v);
+  document.getElementById('newIncome').value = hypoIncome;
+  renderHypothetical();
+  renderCatTable();
+}
+
+function resetIncome() { setIncome(baseSalary); }
+
+function setAllPct(pct) {
+  for (const c of allBudgetCategories()) adjustments[c.name] = { mode: 'pct', value: pct };
+  renderCatControls();
+  renderHypothetical();
+  renderCatTable();
+}
+
+function resetAdjustments() {
+  for (const c of allBudgetCategories()) adjustments[c.name] = { mode: 'pct', value: 100 };
+  renderCatControls();
+  renderHypothetical();
+  renderCatTable();
+}
+
+function renderHypothetical() {
+  const income = hypoIncome;
+  const expense = totalNewMonthly();
+  const balance = income - expense;
+  document.getElementById('newIncomeShow').textContent = fmt(income);
+  document.getElementById('newExpense').textContent = fmt(expense);
+  const balEl = document.getElementById('newBalance');
+  const balBox = document.getElementById('newBalanceBox');
+  const pct = income > 0 ? (balance/income*100) : 0;
+  balEl.textContent = fmt(balance) + ' (' + pct.toFixed(1) + '%)';
+  if (balance >= 0) { balEl.style.color = '#059669'; balBox.style.background = '#ECFDF5'; }
+  else { balEl.style.color = '#DC2626'; balBox.style.background = '#FEF2F2'; }
+  renderBar('newBar', 'newLegend', income, expense);
+  const advisory = document.getElementById('advisory');
+  if (balance < 0) {
+    advisory.innerHTML = `<div class="alert-negative"><b>גירעון של ${fmt(-balance)}/חודש.</b> ההוצאות גבוהות מההכנסה ב-${(-pct).toFixed(1)}%. שקול לקצץ בקטגוריות הגדולות.</div>`;
+  } else if (pct < 10) {
+    advisory.innerHTML = `<div class="alert-negative"><b>חיסכון נמוך (${pct.toFixed(1)}%).</b> מומלץ לחסוך לפחות 10–20% מההכנסה.</div>`;
+  } else if (pct < 20) {
+    advisory.innerHTML = `<div class="alert-positive"><b>חיסכון סביר (${pct.toFixed(1)}%).</b> אתה מצליח לחסוך, יש מקום לשיפור.</div>`;
+  } else {
+    advisory.innerHTML = `<div class="alert-positive"><b>חיסכון מצוין (${pct.toFixed(1)}%)!</b> אתה חוסך ${fmt(balance)}/חודש = ${fmt(balance*12)}/שנה.</div>`;
+  }
+}
+
+function renderCatTable() {
+  const tbody = document.getElementById('catTable');
+  const cats = allBudgetCategories();
+  const totalBaseline = totalCurrentMonthly();
+  let html = '';
+  for (const c of cats) {
+    const newAmt = adjustedAmount(c);
+    const pctOfIncome = (c.monthly / baseSalary * 100);
+    html += `<tr>
+      <td>${escapeHtml(c.name)}</td>
+      <td><span style="font-size:11px; color:#6b7280;">${escapeHtml(c.type)}</span></td>
+      <td class="num">${fmt2(c.total_3mo)}</td>
+      <td class="num">${fmt(c.monthly)}</td>
+      <td class="num">${pctOfIncome.toFixed(1)}%</td>
+      <td class="num">${fmt(newAmt)}</td>
+    </tr>`;
+  }
+  html += `<tr class="total">
+    <td colspan="2">סך הכל</td>
+    <td class="num">${fmt2(totalBaseline*3)}</td>
+    <td class="num">${fmt(totalBaseline)}</td>
+    <td class="num">${(totalBaseline/baseSalary*100).toFixed(1)}%</td>
+    <td class="num">${fmt(totalNewMonthly())}</td>
+  </tr>`;
+  tbody.innerHTML = html;
+}
+
+function downloadBudgetCSV() {
+  const cats = allBudgetCategories();
+  const lines = [['קטגוריה','סוג','ממוצע נוכחי','תקציב חדש','שינוי','אופן ההתאמה'].join(',')];
+  for (const c of cats) {
+    const newAmt = adjustedAmount(c);
+    const adj = adjustments[c.name];
+    const mode = adj.mode === 'fixed' ? 'סכום קבוע' : (adj.value + '% מהבסיס');
+    const change = newAmt - c.monthly;
+    const escape = s => { s = String(s||''); return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s; };
+    lines.push([escape(c.name), escape(c.type), Math.round(c.monthly), Math.round(newAmt), Math.round(change), escape(mode)].join(','));
+  }
+  lines.push('');
+  lines.push(['סיכום','','','','',''].join(','));
+  lines.push(['הכנסה היפותטית', Math.round(hypoIncome),'','','',''].join(','));
+  lines.push(['סך הוצאות מתוכננות','', Math.round(totalNewMonthly()),'','',''].join(','));
+  lines.push(['יתרה חודשית','','', Math.round(hypoIncome - totalNewMonthly()),'',''].join(','));
+
+  const blob = new Blob(['\ufeff' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'תקציב_מתוכנן.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+
+// ===== Init =====
+document.getElementById('search').addEventListener('input', renderEditor);
+document.getElementById('filter-category').addEventListener('change', renderEditor);
+document.getElementById('filter-month').addEventListener('change', renderEditor);
+document.getElementById('filter-card').addEventListener('change', renderEditor);
+document.querySelectorAll('#tab-editor th[data-sort]').forEach(th => {
+  th.addEventListener('click', () => {
+    const col = th.dataset.sort;
+    if (sortBy === col) sortDir = sortDir==='asc' ? 'desc' : 'asc';
+    else { sortBy = col; sortDir = 'asc'; }
+    renderEditor();
+  });
+});
+document.getElementById('newIncome').value = baseSalary;
+document.getElementById('newIncome').addEventListener('input', e => {
+  hypoIncome = Number(e.target.value) || 0;
+  renderHypothetical();
+  renderCatTable();
+});
+
+buildCategoryOptions();
+renderEditor();
+renderBudget();
+</script>
+</body>
+</html>
